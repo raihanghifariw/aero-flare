@@ -58,12 +58,13 @@ jobs:
 
   deploy-backend:
     needs: test-backend
-    if: github.ref == 'refs/heads/main' && secrets.RAILWAY_TOKEN != ''
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy to Railway
+        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         run: |
           curl -fsSL https://railway.app/install.sh | sh
           cd backend
@@ -73,12 +74,13 @@ jobs:
 
   deploy-frontend:
     needs: test-frontend
-    if: github.ref == 'refs/heads/main' && secrets.VERCEL_TOKEN != ''
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
