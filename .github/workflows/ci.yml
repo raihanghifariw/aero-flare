@@ -22,10 +22,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r backend/requirements.txt
-          pip install ruff pytest-cov
+          pip install ruff pytest-cov xgboost scikit-learn pandas numpy
 
       - name: Run Ruff Linter
         run: ruff check .
+
+      - name: Train XGBoost Model Artifact
+        env:
+          PYTHONPATH: .
+        run: python ml/train.py --version 1.0.0
 
       - name: Run Backend Tests
         env:
@@ -81,12 +86,11 @@ jobs:
 
       - name: Deploy to Vercel
         if: env.VERCEL_TOKEN != ''
+        working-directory: ./frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./frontend
-          vercel-args: '--prod'
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          rm -rf .vercel
+          npx vercel --token=${{ secrets.VERCEL_TOKEN }} --prod --yes

@@ -109,14 +109,14 @@ def train(data_path: str, version: str) -> None:
     }
     metrics_path.write_text(json.dumps(metrics, indent=2))
 
-    print(f"\n✅ Model saved → {model_path}")
-    print(f"✅ Metrics saved → {metrics_path}")
+    print(f"\n[OK] Model saved -> {model_path}")
+    print(f"[OK] Metrics saved -> {metrics_path}")
 
     # Gate check assertions
     assert cv_metrics["spread_direction_deg"]["rmse_mean"] <= 90, "Spread direction RMSE too high"
     for t in ["radius_6h_km", "radius_12h_km", "radius_24h_km"]:
         assert cv_metrics[t]["rmse_mean"] <= 15.0, f"{t} RMSE too high (synthetic data)"
-    print("\n✅ All RMSE gate checks passed.")
+    print("\n[OK] All RMSE gate checks passed.")
 
 
 if __name__ == "__main__":
