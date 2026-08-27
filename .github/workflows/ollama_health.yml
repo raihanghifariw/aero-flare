@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Ping Ollama tunnel
         run: |
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --connect-timeout 10 --max-time 15 \
             "${{ secrets.OLLAMA_BASE_URL }}/api/tags" || echo "000")
 

@@ -7,13 +7,12 @@ FR-20: OpenAPI docs at /docs.
 from __future__ import annotations
 
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from slowapi import _rate_limit_exceeded_handler
@@ -84,6 +83,7 @@ def create_app() -> FastAPI:
 
     # --- Request timing ---
     from collections.abc import Awaitable, Callable
+
     from fastapi.responses import Response
 
     @app.middleware("http")

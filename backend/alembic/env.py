@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 from logging.config import fileConfig
+from pathlib import Path
 
 # Add the backend/ directory to sys.path so `from app.models import ...` works
 # regardless of which directory alembic is invoked from.
@@ -60,12 +60,14 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import all models so autogenerate detects them
-from app.models import base  # noqa: F401, E402
-from app.models import fire_event  # noqa: F401, E402
-from app.models import triage_report  # noqa: F401, E402
-from app.models import prediction  # noqa: F401, E402
-from app.models import webhook  # noqa: F401, E402
-from app.models import audit_log  # noqa: F401, E402
+from app.models import (  # noqa: E402
+    audit_log,  # noqa: F401, E402
+    base,  # noqa: F401, E402
+    fire_event,  # noqa: F401, E402
+    prediction,  # noqa: F401, E402
+    triage_report,  # noqa: F401, E402
+    webhook,  # noqa: F401, E402
+)
 
 target_metadata = base.Base.metadata
 

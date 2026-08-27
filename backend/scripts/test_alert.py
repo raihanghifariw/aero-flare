@@ -55,6 +55,7 @@ async def _run_synthetic_alert() -> int:
     then clean up the row.
     """
     from sqlalchemy import delete
+
     from app.models.base import async_session_factory
     from app.models.fire_event import FireEvent
     from app.services.alerts.alert_service import AlertService

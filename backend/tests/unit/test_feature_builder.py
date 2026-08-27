@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from app.core.exceptions import PredictionError
 from app.services.prediction.feature_builder import (
     FEATURE_COLUMNS,
     build_feature_vector,

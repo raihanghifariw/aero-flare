@@ -13,7 +13,6 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.exceptions import TriageError
 from app.models.fire_event import FireEvent
 from app.models.triage_report import TriageReport
 from app.schemas.common import get_trace_id
@@ -45,10 +44,9 @@ async def _download_tile_for_vlm(tile_url: str | None) -> str | None:
             resp = await client.get(tile_url)
             resp.raise_for_status()
         suffix = ".jpg" if "jpg" in tile_url.lower() else ".png"
-        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-        tmp.write(resp.content)
-        tmp.close()
-        return tmp.name
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(resp.content)
+            return tmp.name
     except Exception as e:
         logger.warning("tile_download_failed", tile_url=tile_url, error=str(e))
         return None

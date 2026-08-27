@@ -7,7 +7,6 @@ Usage: python ml/generate_training_data.py
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import numpy as np

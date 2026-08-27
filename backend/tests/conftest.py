@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import AsyncIterator
-from unittest.mock import AsyncMock, patch
+from collections.abc import AsyncIterator
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -29,9 +29,9 @@ os.environ.setdefault("FIRMS_API_KEY", "test-firms-key")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-bot-token")
 os.environ.setdefault("TELEGRAM_CHANNEL_ID", "-100123456789")
 
+from app.api.deps import get_db  # noqa: E402
 from app.main import app  # noqa: E402 — must be after env patching
 from app.models.base import Base  # noqa: E402
-from app.api.deps import get_db  # noqa: E402
 
 # ─── In-memory SQLite test engine ────────────────────────────────────────────
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

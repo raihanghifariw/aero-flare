@@ -22,7 +22,7 @@ jobs:
 
       - name: Health check — backend reachable
         run: |
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             ${{ secrets.BACKEND_API_URL }}/api/v1/health || echo "000")
           if [ "$STATUS" != "200" ]; then
             echo "::error::Backend unhealthy (HTTP $STATUS) — aborting pipeline"
@@ -32,7 +32,7 @@ jobs:
 
       - name: Health check — Ollama tunnel reachable
         run: |
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             ${{ secrets.OLLAMA_BASE_URL }}/api/tags || echo "000")
           if [ "$STATUS" != "200" ]; then
             curl -s -X POST \

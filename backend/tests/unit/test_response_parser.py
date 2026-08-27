@@ -5,7 +5,6 @@ import pytest
 
 from app.services.triage.response_parser import parse_vlm_response
 
-
 VALID_JSON = """{
   "classification": "CONFIRMED_FIRE",
   "confidence": 0.92,

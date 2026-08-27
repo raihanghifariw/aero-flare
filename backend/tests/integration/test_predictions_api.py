@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.fire_event import FireEvent
 from app.models.prediction import Prediction
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _make_event(**kwargs) -> FireEvent:

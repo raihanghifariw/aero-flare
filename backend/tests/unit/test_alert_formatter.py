@@ -7,8 +7,6 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import pytest
-
 from app.services.alerts.alert_formatter import format_alert_message
 
 

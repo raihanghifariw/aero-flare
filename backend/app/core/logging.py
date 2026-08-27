@@ -38,14 +38,14 @@ def scrub_secrets(
     structlog processor: redact known secret field names from log entries.
     Prevents accidental leakage of API keys via logs.
     """
-    _SECRET_KEYS = {
+    secret_keys = {
         "api_key", "API_KEY", "secret", "SECRET_KEY",
         "password", "token", "TELEGRAM_BOT_TOKEN",
         "SUPABASE_SERVICE_KEY", "CLOUDFLARE_R2_SECRET",
         "GRAFANA_API_TOKEN", "FIRMS_API_KEY",
         "authorization", "Authorization",
     }
-    for key in _SECRET_KEYS:
+    for key in secret_keys:
         if key in event_dict:
             event_dict[key] = "***REDACTED***"
     return event_dict

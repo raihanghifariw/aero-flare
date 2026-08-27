@@ -7,7 +7,7 @@ compatibility with any existing imports in routers.
 """
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession

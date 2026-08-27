@@ -46,9 +46,8 @@ async def main() -> None:
     from app.models.base import async_session_factory
     from app.services.ingestion.firms_parser import fetch_firms_data, parse_firms_csv
     from app.services.ingestion.gibs_tile_fetcher import fetch_and_upload_tile
-    from app.services.ingestion.event_writer import upsert_events
-    from app.services.triage.triage_service import run_triage
     from app.services.prediction.prediction_service import run_prediction
+    from app.services.triage.triage_service import run_triage
 
     # ------------------------------------------------------------------ #
     # Step 1 — Fetch + parse FIRMS                                         #
@@ -83,6 +82,7 @@ async def main() -> None:
         return
 
     from sqlalchemy import select as sa_select
+
     from app.models.fire_event import FireEvent
 
     async with async_session_factory() as db:
@@ -102,6 +102,7 @@ async def main() -> None:
                 tile_url = await fetch_and_upload_tile(event)
                 if tile_url:
                     from sqlalchemy import update
+
                     from app.models.fire_event import FireEvent
                     await db.execute(
                         update(FireEvent)

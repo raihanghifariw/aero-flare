@@ -60,7 +60,7 @@ def train(data_path: str, version: str) -> None:
 
     for i, target in enumerate(TARGET_COLUMNS):
         maes, rmses = [], []
-        for fold, (train_idx, val_idx) in enumerate(kf.split(X_scaled)):
+        for _fold, (train_idx, val_idx) in enumerate(kf.split(X_scaled)):
             model = XGBRegressor(
                 n_estimators=200,
                 max_depth=6,

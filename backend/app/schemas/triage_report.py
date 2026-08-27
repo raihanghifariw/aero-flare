@@ -13,7 +13,7 @@ Classification = Literal[
 ]
 
 RecommendedAction = Literal[
-    "MONITOR", "DISPATCH", "EVACUATE"
+    "MONITOR", "INVESTIGATE", "DISPATCH", "DISPATCH_LOCAL", "DISPATCH_REGIONAL", "EVACUATE"
 ]
 
 TriageSource = Literal["vlm", "rule_based"]

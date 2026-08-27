@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import textwrap
-from io import StringIO
 
 import pytest
 
 from app.core.exceptions import IngestionError
 from app.services.ingestion.firms_parser import parse_firms_csv
-
 
 VALID_CSV = textwrap.dedent("""\
     latitude,longitude,brightness,frp,acq_date,acq_time,satellite,confidence

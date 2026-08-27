@@ -5,7 +5,7 @@ FR-12: Alert message format with danger level + spread prediction.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import timezone
 
 from app.models.fire_event import FireEvent
 from app.models.prediction import Prediction

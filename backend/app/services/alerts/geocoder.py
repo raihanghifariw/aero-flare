@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import functools
 
-import httpx
 import structlog
 
 logger = structlog.get_logger()

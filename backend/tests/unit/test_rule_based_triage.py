@@ -5,8 +5,6 @@ import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.services.triage.rule_based_triage import FRP_HIGH_THRESHOLD, rule_based_triage
 
 

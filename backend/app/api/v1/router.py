@@ -5,7 +5,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import alerts, events, health, ingestion, predictions, stats, tiles, triage, webhooks
+from app.api.v1 import (
+    alerts,
+    events,
+    health,
+    ingestion,
+    predictions,
+    stats,
+    tiles,
+    triage,
+    webhooks,
+)
 
 router = APIRouter()
 

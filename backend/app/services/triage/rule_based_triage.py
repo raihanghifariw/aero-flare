@@ -36,7 +36,7 @@ def rule_based_triage(event: FireEvent) -> TriageOutput:
     if frp is not None and frp > FRP_CONFIRMED_THRESHOLD:
         result = TriageOutput(
             classification="CONFIRMED_FIRE",
-            confidence=0.75,
+            confidence=0.65,
             danger_level=4,
             fire_area_ha=None,
             smoke_direction=None,
@@ -55,7 +55,7 @@ def rule_based_triage(event: FireEvent) -> TriageOutput:
             danger_level=3,
             fire_area_ha=None,
             smoke_direction=None,
-            recommended_action="DISPATCH",
+            recommended_action="DISPATCH_LOCAL",
             summary=(
                 f"VLM unavailable — rule-based triage applied. "
                 f"FRP={frp:.1f}MW exceeds {FRP_HIGH_THRESHOLD}MW threshold. "
@@ -81,7 +81,7 @@ def rule_based_triage(event: FireEvent) -> TriageOutput:
         result = TriageOutput(
             classification="PROBABLE_FIRE",
             confidence=0.30,
-            danger_level=1,
+            danger_level=2,
             fire_area_ha=None,
             smoke_direction=None,
             recommended_action="MONITOR",

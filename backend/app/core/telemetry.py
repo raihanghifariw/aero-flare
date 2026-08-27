@@ -25,7 +25,9 @@ def setup_telemetry(app: FastAPI) -> None:
         provider = TracerProvider()
 
         if settings.GRAFANA_OTLP_ENDPOINT:
-            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                OTLPSpanExporter,
+            )
             exporter = OTLPSpanExporter(
                 endpoint=f"{settings.GRAFANA_OTLP_ENDPOINT}/v1/traces",
                 headers={

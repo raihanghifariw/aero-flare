@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from app.schemas.triage_report import TriageOutput
 from app.services.triage.response_parser import parse_vlm_response
 
