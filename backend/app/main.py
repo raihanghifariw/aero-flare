@@ -79,8 +79,14 @@ def create_app() -> FastAPI:
     )
 
     # --- Request timing ---
+    from collections.abc import Awaitable, Callable
+    from fastapi.responses import Response
+
     @app.middleware("http")
-    async def add_process_time(request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def add_process_time(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         start = time.perf_counter()
         response = await call_next(request)
         response.headers["X-Process-Time-Ms"] = str(

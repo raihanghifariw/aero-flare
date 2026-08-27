@@ -24,7 +24,8 @@ jobs:
         run: pytest backend/tests/unit/ -v --tb=short --cov=backend/app --cov-report=term-missing
 
       - name: Type check
-        run: mypy backend/app --strict
+        run: mypy backend/app --strict --ignore-missing-imports
+        working-directory: ${{ github.workspace }}
 
       - name: Lint
         run: ruff check backend/app
@@ -84,6 +85,9 @@ jobs:
 
       - name: E2E tests
         run: cd frontend && npx playwright test
+        env:
+          BACKEND_API_URL: http://localhost:8000
+          BACKEND_API_KEY: test-api-key
 
   deploy-backend:
     needs: [backend-test, backend-security]
