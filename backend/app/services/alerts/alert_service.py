@@ -34,6 +34,48 @@ from app.services.alerts.webhook_service import dispatch_webhooks
 logger = logging.getLogger(__name__)
 
 
+def should_send_alert(event: FireEvent, triage: TriageReport | None) -> tuple[bool, str]:
+    """
+    Operational Alert Routing Engine Standards:
+      1. Exclude FALSE_POSITIVE and INDUSTRIAL_SOURCE entirely.
+      2. Exclude low danger level (danger_level <= 1).
+      3. FRP Threshold Standards:
+         - 0 - 30 MW (Low): Skip alerting unless Level 4/5 CONFIRMED_FIRE.
+         - 30 - 100 MW (Moderate): Alert if CONFIRMED_FIRE or PROBABLE_FIRE with danger_level >= 3.
+         - 100 - 500 MW (High): Alert all active fires (danger_level >= 3).
+         - > 500 MW (Extreme): Always alert.
+    """
+    if triage is None:
+        frp = event.frp or 0.0
+        if frp < 30.0:
+            return False, "low_frp_untriaged"
+        return True, "untriaged_moderate_high_frp"
+
+    classification = triage.classification
+    danger = triage.danger_level or 1
+    frp = event.frp or 0.0
+
+    # Rule 1: Exclude non-fire sources
+    if classification in ("FALSE_POSITIVE", "INDUSTRIAL_SOURCE"):
+        return False, f"classification_{classification.lower()}"
+
+    # Rule 2: Low danger level
+    if danger <= 1:
+        return False, "danger_level_low"
+
+    # Rule 3: FRP-based routing thresholds
+    if frp < 30.0:
+        if classification == "CONFIRMED_FIRE" and danger >= 4:
+            return True, "low_frp_confirmed_critical"
+        return False, "low_frp_below_30mw"
+
+    # Moderate / High / Extreme FRP (>= 30 MW)
+    if classification in ("CONFIRMED_FIRE", "PROBABLE_FIRE") and danger >= 2:
+        return True, "valid_active_fire"
+
+    return False, "routing_criteria_not_met"
+
+
 class AlertService:
     """Orchestrate the full alert pipeline for a single FireEvent."""
 
@@ -77,6 +119,18 @@ class AlertService:
         # 2. Load related triage + prediction --------------------------------
         triage: TriageReport | None = await self._load_triage(event_id)
         prediction: Prediction | None = await self._load_prediction(event_id)
+
+        # 3. Alert Routing Gating -------------------------------------------
+        should_send, route_reason = should_send_alert(event, triage)
+        if not force and not should_send:
+            logger.info(
+                "alert_service.send_alert: routing gate skipped event %s (reason=%s, classification=%s, FRP=%s)",
+                event_id,
+                route_reason,
+                triage.classification if triage else None,
+                event.frp,
+            )
+            return {"skipped": True, "reason": route_reason}
 
         # 3. Geocode ---------------------------------------------------------
         location_name = await reverse_geocode(event.lat, event.lon)
