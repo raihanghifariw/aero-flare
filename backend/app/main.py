@@ -61,8 +61,11 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     # --- HTTPS redirect in production ---
-    if settings.ENVIRONMENT == "production":
-        app.add_middleware(HTTPSRedirectMiddleware)
+    # NOTE: Disabled — Railway handles TLS termination at the load balancer level.
+    # Enabling HTTPSRedirectMiddleware would break Railway's health checks
+    # which probe via HTTP internally before TLS is established.
+    # if settings.ENVIRONMENT == "production":
+    #     app.add_middleware(HTTPSRedirectMiddleware)
 
     # --- CORS ---
     allowed_origins = (
@@ -76,6 +79,7 @@ def create_app() -> FastAPI:
         allow_credentials=False,
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "X-API-Key"],
+        expose_headers=["X-Process-Time-Ms"],
     )
 
     # --- Request timing ---
