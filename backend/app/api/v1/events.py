@@ -42,11 +42,16 @@ async def list_events(
     date_from: datetime | None = Query(None, description="Filter events after this datetime"),
     date_to: datetime | None = Query(None, description="Filter events before this datetime"),
     danger_level: int | None = Query(None, ge=1, le=5, description="Filter by danger level"),
+    classification: str | None = Query(None, description="Filter by classification"),
     db: AsyncSession = Depends(get_db),
 ) -> FireEventsResponse:
     from sqlalchemy import case
     stmt = select(FireEvent).outerjoin(TriageReport, FireEvent.id == TriageReport.event_id).order_by(
-        case((FireEvent.status == "ALERTED", 0), else_=1),
+        case(
+            (FireEvent.status == "ALERTED", 0),
+            (TriageReport.danger_level == 1, 1),
+            else_=2,
+        ),
         FireEvent.detected_at.desc(),
     )
 
@@ -58,6 +63,8 @@ async def list_events(
         stmt = stmt.where(FireEvent.detected_at <= date_to)
     if danger_level is not None:
         stmt = stmt.where(TriageReport.danger_level == danger_level)
+    if classification:
+        stmt = stmt.where(TriageReport.classification == classification)
 
     # Count query
     count_stmt = select(func.count()).select_from(stmt.subquery())

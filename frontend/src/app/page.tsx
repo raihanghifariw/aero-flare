@@ -49,7 +49,15 @@ export default function DashboardPage() {
     [timeRange]
   );
 
-  // Fire events (polled every 5 min) — scoped to selected time range
+  // Compute classification filter for backend query when a single classification is checked
+  const classParam = useMemo(() => {
+    if (classFilter.size === 1) {
+      return Array.from(classFilter)[0];
+    }
+    return undefined;
+  }, [classFilter]);
+
+  // Fire events (polled every 5 min) — scoped to selected time range & active filters
   const {
     data: eventsData,
     isLoading: eventsLoading,
@@ -60,6 +68,7 @@ export default function DashboardPage() {
     limit: 100,
     date_from: dateFrom,
     ...(dangerFilter !== null && { danger_level: dangerFilter }),
+    ...(classParam && { classification: classParam }),
   });
 
   // Pipeline stats
