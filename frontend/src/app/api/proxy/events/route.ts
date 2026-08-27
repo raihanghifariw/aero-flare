@@ -7,10 +7,18 @@ const API_KEY = process.env.BACKEND_API_KEY!;
 /**
  * GET /api/proxy/events
  * Proxies to backend GET /api/v1/events with server-side X-API-Key auth.
- * Query params (page, limit, status, danger_level_min) forwarded transparently.
+ * Query params (page, limit, status, danger_level, date_from, date_to) forwarded transparently.
+ * Default: last 24 hours if no date_from specified.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
+
+  // Default to last 24 hours if no date_from provided
+  if (!searchParams.has('date_from')) {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    searchParams.set('date_from', yesterday);
+  }
+
   const backendUrl = `${BACKEND_URL}/api/v1/events?${searchParams.toString()}`;
 
   const response = await fetch(backendUrl, {

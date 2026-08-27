@@ -14,6 +14,7 @@ import type { FireEvent } from '@/types/fire-event';
 import type { PipelineStats } from '@/components/panels/StatsBar';
 import { apiFetch } from '@/lib/api';
 import type { Classification } from '@/types/triage-report';
+import type { UseFireEventsParams } from '@/hooks/useFireEvents';
 
 // CRITICAL: Leaflet requires browser APIs — must be loaded client-side only
 const FireMap = dynamic(
@@ -28,19 +29,34 @@ const FireMap = dynamic(
   }
 );
 
+// Time range options (hours)
+const TIME_RANGE_OPTIONS = [
+  { label: '24h', hours: 24 },
+  { label: '48h', hours: 48 },
+  { label: '7d', hours: 168 },
+] as const;
+type TimeRangeHours = 24 | 48 | 168;
+
 export default function DashboardPage() {
   const [page, setPage] = useState(1);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [dangerFilter, setDangerFilter] = useState<number | null>(null);
   const [classFilter, setClassFilter] = useState<Set<Classification>>(new Set());
+  const [timeRange, setTimeRange] = useState<TimeRangeHours>(24);
 
-  // Fire events (polled every 5 min)
+  // Compute date_from from selected time range
+  const dateFrom = useMemo(
+    () => new Date(Date.now() - timeRange * 60 * 60 * 1000).toISOString(),
+    [timeRange]
+  );
+
+  // Fire events (polled every 5 min) — scoped to selected time range
   const {
     data: eventsData,
     isLoading: eventsLoading,
     error: eventsError,
     mutate: refetchEvents,
-  } = useFireEvents({ page, limit: 100 });
+  } = useFireEvents({ page, limit: 100, date_from: dateFrom });
 
   // Pipeline stats
   const { data: stats, isLoading: statsLoading } = useSWR<PipelineStats>(
@@ -78,6 +94,24 @@ export default function DashboardPage() {
           <div className="pointer-events-none absolute left-4 top-4 z-10 hidden rounded-lg border border-white/70 bg-slate-950/85 px-3 py-2 text-white shadow-lg backdrop-blur-sm sm:block">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">Live detection map</p>
             <p className="mt-0.5 text-xs text-slate-300">Indonesia · NASA FIRMS</p>
+          </div>
+
+          {/* Time range selector */}
+          <div className="pointer-events-auto absolute right-4 top-4 z-10 hidden sm:flex items-center gap-1 rounded-lg border border-white/70 bg-slate-950/85 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+            <span className="text-[10px] text-slate-400 mr-1">Range:</span>
+            {TIME_RANGE_OPTIONS.map(({ label, hours }) => (
+              <button
+                key={hours}
+                onClick={() => { setTimeRange(hours as TimeRangeHours); setPage(1); }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  timeRange === hours
+                    ? 'bg-orange-500 text-white'
+                    : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           {eventsError && (
             <div className="absolute top-3 left-3 right-3 z-10">
