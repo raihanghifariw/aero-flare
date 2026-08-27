@@ -29,7 +29,7 @@ export function useTriageMap(eventIds: string[]): Record<string, TriageReport> {
       }
       return map;
     },
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
 
   return data ?? {};

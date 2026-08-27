@@ -183,8 +183,14 @@ export function EventSidebar({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                    {triage && <DangerBadge level={triage.danger_level} />}
-                    {triage && <ClassificationTag classification={triage.classification} />}
+                    {triage ? (
+                      <>
+                        <DangerBadge level={triage.danger_level} />
+                        <ClassificationTag classification={triage.classification} />
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 italic">Pending analysis</span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-600 truncate">
                     {event.lat.toFixed(3)}°, {event.lon.toFixed(3)}°

@@ -181,7 +181,9 @@ export function TriageModal({ event, onClose }: TriageModalProps) {
               {/* Fire area */}
               <div className="text-xs text-gray-600">
                 <span className="font-medium">Estimated area:</span>{' '}
-                {formatHectares(triage.fire_area_ha)}
+                <span className={triage.fire_area_ha === null ? 'text-gray-400 italic' : 'text-gray-700'}>
+                  {formatHectares(triage.fire_area_ha)}
+                </span>
               </div>
 
               {/* Smoke direction */}

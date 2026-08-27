@@ -43,9 +43,13 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   ).toISOString();
 
+  const todayEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999),
+  ).toISOString();
+
   const [summaryRes, healthRes, eventsRes] = await Promise.all([
     fetch(
-      `${BACKEND_URL}/api/v1/stats/summary?date_from=${encodeURIComponent(todayStart)}`,
+      `${BACKEND_URL}/api/v1/stats/summary?date_from=${encodeURIComponent(todayStart)}&date_to=${encodeURIComponent(todayEnd)}`,
       { headers: HEADERS, cache: 'no-store' },
     ),
     fetch(`${BACKEND_URL}/api/v1/health`, { cache: 'no-store' }),

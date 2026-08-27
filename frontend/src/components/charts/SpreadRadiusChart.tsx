@@ -28,6 +28,21 @@ export function SpreadRadiusChart({ prediction }: SpreadRadiusChartProps) {
     { horizon: '24h', radius: prediction.radius_24h_km },
   ];
 
+  const hasData = data.some((d) => d.radius > 0);
+
+  if (!hasData) {
+    return (
+      <div data-testid="spread-radius-chart">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Spread Radius (km)
+        </p>
+        <div className="flex h-[140px] items-center justify-center rounded-lg bg-gray-50 border border-dashed border-gray-200 text-xs text-gray-400">
+          Spread prediction not yet available
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div data-testid="spread-radius-chart">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
