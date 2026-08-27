@@ -55,7 +55,12 @@ export default function DashboardPage() {
     isLoading: eventsLoading,
     error: eventsError,
     mutate: refetchEvents,
-  } = useFireEvents({ page, limit: 100, date_from: dateFrom });
+  } = useFireEvents({
+    page,
+    limit: 100,
+    date_from: dateFrom,
+    ...(dangerFilter !== null && { danger_level: dangerFilter }),
+  });
 
   // Pipeline stats
   const { data: stats, isLoading: statsLoading } = useSWR<PipelineStats>(

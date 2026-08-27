@@ -7,6 +7,7 @@ export interface UseFireEventsParams {
   page?: number;
   limit?: number;
   status?: FireStatus | '';
+  danger_level?: number;
   danger_level_min?: number;
   date_from?: string;
 }
@@ -17,12 +18,13 @@ export interface UseFireEventsParams {
  * All params are included in the SWR key for correct cache invalidation.
  */
 export function useFireEvents(params: UseFireEventsParams = {}) {
-  const { page = 1, limit = 50, status = '', danger_level_min, date_from } = params;
+  const { page = 1, limit = 50, status = '', danger_level, danger_level_min, date_from } = params;
 
   const qs = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
+    ...(danger_level !== undefined && { danger_level: String(danger_level) }),
     ...(danger_level_min !== undefined && { danger_level_min: String(danger_level_min) }),
     ...(date_from && { date_from }),
   });

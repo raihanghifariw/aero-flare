@@ -62,7 +62,16 @@ export function EventSidebar({
     onClassFilterChange(next);
   }
 
-  const filtered = events;
+  const filtered = events.filter((event) => {
+    const triage = triageMap[event.id];
+    if (dangerFilter !== null && (!triage || triage.danger_level !== dangerFilter)) {
+      return false;
+    }
+    if (classFilter.size > 0 && (!triage || !classFilter.has(triage.classification))) {
+      return false;
+    }
+    return true;
+  });
 
   const hasFilters = dangerFilter !== null || classFilter.size > 0;
 

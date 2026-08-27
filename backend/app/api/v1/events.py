@@ -45,7 +45,7 @@ async def list_events(
     db: AsyncSession = Depends(get_db),
 ) -> FireEventsResponse:
     from sqlalchemy import case
-    stmt = select(FireEvent).order_by(
+    stmt = select(FireEvent).outerjoin(TriageReport, FireEvent.id == TriageReport.event_id).order_by(
         case((FireEvent.status == "ALERTED", 0), else_=1),
         FireEvent.detected_at.desc(),
     )
@@ -56,6 +56,8 @@ async def list_events(
         stmt = stmt.where(FireEvent.detected_at >= date_from)
     if date_to:
         stmt = stmt.where(FireEvent.detected_at <= date_to)
+    if danger_level is not None:
+        stmt = stmt.where(TriageReport.danger_level == danger_level)
 
     # Count query
     count_stmt = select(func.count()).select_from(stmt.subquery())
