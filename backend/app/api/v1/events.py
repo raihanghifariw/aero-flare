@@ -46,14 +46,17 @@ async def list_events(
     db: AsyncSession = Depends(get_db),
 ) -> FireEventsResponse:
     from sqlalchemy import case
-    stmt = select(FireEvent).outerjoin(TriageReport, FireEvent.id == TriageReport.event_id).order_by(
-        case(
-            (FireEvent.status == "ALERTED", 0),
-            (TriageReport.danger_level == 1, 1),
-            else_=2,
-        ),
-        FireEvent.detected_at.desc(),
-    )
+
+    stmt = select(FireEvent)
+
+    # Subquery filtering for danger_level or classification
+    if danger_level is not None or classification is not None:
+        tr_subq = select(TriageReport.event_id)
+        if danger_level is not None:
+            tr_subq = tr_subq.where(TriageReport.danger_level == danger_level)
+        if classification:
+            tr_subq = tr_subq.where(TriageReport.classification == classification)
+        stmt = stmt.where(FireEvent.id.in_(tr_subq))
 
     if status:
         stmt = stmt.where(FireEvent.status == status)
@@ -61,19 +64,60 @@ async def list_events(
         stmt = stmt.where(FireEvent.detected_at >= date_from)
     if date_to:
         stmt = stmt.where(FireEvent.detected_at <= date_to)
-    if danger_level is not None:
-        stmt = stmt.where(TriageReport.danger_level == danger_level)
-    if classification:
-        stmt = stmt.where(TriageReport.classification == classification)
 
-    # Count query
+    # Count total matching rows
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar_one()
 
-    # Paginate
+    # Order query:
+    # 1. ALERTED events first
+    # 2. Level 1 / FALSE_POSITIVE events second (guarantees Level 1 visible on page 1)
+    # 3. Newest detections first
+    subq_l1 = select(TriageReport.event_id).where(
+        (TriageReport.danger_level == 1) | (TriageReport.classification == "FALSE_POSITIVE")
+    )
+    stmt = stmt.order_by(
+        case(
+            (FireEvent.status == "ALERTED", 0),
+            (FireEvent.id.in_(subq_l1), 1),
+            else_=2,
+        ),
+        FireEvent.detected_at.desc(),
+    )
+
     offset = (page - 1) * limit
     result = await db.execute(stmt.limit(limit).offset(offset))
     events = result.scalars().all()
+
+    # Batch load latest TriageReport for returned events
+    event_ids = [e.id for e in events]
+    triage_map: dict[uuid.UUID, TriageReport] = {}
+    if event_ids:
+        triage_stmt = (
+            select(TriageReport)
+            .where(TriageReport.event_id.in_(event_ids))
+            .order_by(TriageReport.processed_at.desc())
+        )
+        triage_res = await db.execute(triage_stmt)
+        for tr in triage_res.scalars().all():
+            if tr.event_id not in triage_map:
+                triage_map[tr.event_id] = tr
+
+    event_schemas = []
+    for e in events:
+        schema = FireEventSchema.model_validate(e)
+        tr = triage_map.get(e.id)
+        if tr:
+            schema = schema.model_copy(update={"triage": TriageReportSchema.model_validate(tr)})
+        event_schemas.append(schema)
+
+    return FireEventsResponse(
+        data=event_schemas,
+        total=total,
+        page=page,
+        page_size=limit,
+        has_next=(offset + limit) < total,
+    )
 
     # Batch load latest TriageReport for returned events
     event_ids = [e.id for e in events]
