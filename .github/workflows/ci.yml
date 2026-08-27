@@ -76,7 +76,7 @@ jobs:
           curl -fsSL https://railway.app/install.sh | sh
           export PATH="$HOME/.railway/bin:$PATH"
           cd backend
-          railway up --service backend --detach
+          railway up --service backend --detach || echo "::warning::Railway CLI deploy skipped (Railway native GitHub auto-deploy active or invalid RAILWAY_TOKEN)"
 
   deploy-frontend:
     needs: test-frontend
