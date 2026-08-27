@@ -29,7 +29,15 @@ Each entry must include:
 
 ## Active Exemptions
 
-*(None at initial deployment — all `pip-audit` and `npm audit` findings resolved.)*
+### GHSA-postcss-next14 — next@14.2.35 / postcss internal bundle
+- **Severity:** HIGH
+- **Affected:** `postcss <=8.5.22` bundled internally by `next@14.x`
+- **CVEs:** GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q, GHSA-fxqj-rqcc-2cmp, GHSA-r28c-9q8g-f849
+- **Description:** PostCSS XSS, arbitrary file read, and path traversal via sourceMappingURL in CSS source maps. All affect build-time CSS processing only.
+- **Why unfixable:** Transitive dependency bundled inside `next` package. Fix requires upgrading to Next.js 15 which is a breaking change (App Router API changes, React 19 requirement).
+- **Mitigation:** (1) Vulnerabilities are build-time only — not exploitable at runtime in production. (2) No user-controlled CSS input is processed via PostCSS in this project. (3) CI audit-level set to `critical` until Next.js 15 migration is planned.
+- **Review date:** 2026-08-27
+- **Reviewer:** @raihanghifariw
 
 ---
 
