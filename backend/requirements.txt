@@ -25,7 +25,7 @@ opentelemetry-exporter-otlp==1.24.0
 opentelemetry-instrumentation-fastapi==0.45b0
 python-dotenv==1.0.1
 aiosqlite==0.20.0
-pytest==8.2.1
+pytest==9.1.1
 pytest-asyncio==0.23.7
 pytest-cov==5.0.0
 pytest-mock==3.14.0
