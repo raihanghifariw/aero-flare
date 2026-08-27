@@ -14,7 +14,6 @@ import type { FireEvent } from '@/types/fire-event';
 import type { PipelineStats } from '@/components/panels/StatsBar';
 import { apiFetch } from '@/lib/api';
 import type { Classification } from '@/types/triage-report';
-import type { UseFireEventsParams } from '@/hooks/useFireEvents';
 
 // CRITICAL: Leaflet requires browser APIs — must be loaded client-side only
 const FireMap = dynamic(
