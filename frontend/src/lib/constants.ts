@@ -1,4 +1,4 @@
-import type { Classification, RecommendedAction } from '@/types/triage-report';
+import type { Classification } from '@/types/triage-report';
 
 // ─── Danger Level ────────────────────────────────────────────────────────────
 
