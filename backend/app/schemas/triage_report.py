@@ -28,6 +28,7 @@ class TriageOutput(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     danger_level: int = Field(..., ge=1, le=5)
     fire_area_ha: float | None = Field(None, ge=0.0)
+    smoke_visible: bool | None = Field(None)
     smoke_direction: str | None = None
     summary: str | None = None
     recommended_action: RecommendedAction = "MONITOR"

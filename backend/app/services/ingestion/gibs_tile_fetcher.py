@@ -24,9 +24,10 @@ from app.core.exceptions import TileNotFoundError
 
 logger = structlog.get_logger()
 
-# GIBS WMTS endpoint — VIIRS True Color, zoomed for hotspot inspection.
+# GIBS WMTS endpoint — MODIS False Color 7-2-1 (SWIR-NIR-Red) for unambiguous fire/smoke visual triage.
 GIBS_BASE = "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best"
-GIBS_LAYER = "VIIRS_SNPP_CorrectedReflectance_TrueColor"
+GIBS_LAYER = "MODIS_Aqua_CorrectedReflectance_Bands721"
+GIBS_FALLBACK_LAYER = "VIIRS_SNPP_CorrectedReflectance_TrueColor"
 GIBS_ZOOM = 8          # ~1.25km tile footprint, more useful for triage
 GIBS_TILE_MATRIX = "250m"
 
@@ -66,6 +67,7 @@ async def fetch_gibs_tile(
 ) -> str | None:
     """
     Fetch a GIBS WMTS tile for the given coordinates and date.
+    Tries False-Color 7-2-1 primary layer first, falling back to TrueColor if unavailable.
     Uploads to Cloudflare R2 and returns the R2 object key.
 
     Returns:
@@ -77,20 +79,31 @@ async def fetch_gibs_tile(
     """
     settings = get_settings()
     col, row = _lat_lon_to_tile(lat, lon, GIBS_ZOOM)
-    url = (
-        f"{GIBS_BASE}/{GIBS_LAYER}/default/{date_str}"
-        f"/{GIBS_TILE_MATRIX}/{GIBS_ZOOM}/{row}/{col}.jpg"
-    )
 
-    logger.info("gibs_tile_fetch_start", lat=lat, lon=lon, date=date_str, url=url)
+    resp = None
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for layer in [GIBS_LAYER, GIBS_FALLBACK_LAYER]:
+            url = (
+                f"{GIBS_BASE}/{layer}/default/{date_str}"
+                f"/{GIBS_TILE_MATRIX}/{GIBS_ZOOM}/{row}/{col}.jpg"
+            )
+            logger.info("gibs_tile_fetch_start", lat=lat, lon=lon, date=date_str, layer=layer, url=url)
+            try:
+                r = await client.get(url)
+                if r.status_code == 200:
+                    resp = r
+                    break
+                if r.status_code == 404:
+                    continue
+                r.raise_for_status()
+            except httpx.RequestError as e:
+                raise TileNotFoundError(f"GIBS network error: {e}") from e
+            except httpx.HTTPStatusError as e:
+                raise TileNotFoundError(
+                    f"GIBS returned HTTP {e.response.status_code} for {url}"
+                ) from e
 
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(url)
-    except httpx.RequestError as e:
-        raise TileNotFoundError(f"GIBS network error: {e}") from e
-
-    if resp.status_code == 404:
+    if resp is None:
         logger.warning("gibs_tile_unavailable", lat=lat, lon=lon, date=date_str)
         return None
 

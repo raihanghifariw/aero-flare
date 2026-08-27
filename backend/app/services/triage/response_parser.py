@@ -19,6 +19,44 @@ _FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)\s*```", re.IGNORECASE)
 _JSON_OBJ_RE = re.compile(r"\{[\s\S]+\}", re.DOTALL)
 
 
+def apply_triage_guardrails(output: TriageOutput) -> TriageOutput:
+    """
+    Sanity validation guardrails to prevent visual hallucination contradictions:
+      1. If fire_area_ha == 0.0 or None, cap danger_level to max 2 and prevent high severity actions.
+      2. If smoke_visible is False and classification == "CONFIRMED_FIRE", downgrade to "PROBABLE_FIRE".
+    """
+    area = output.fire_area_ha or 0.0
+    danger = output.danger_level or 2
+    classification = output.classification
+    action = output.recommended_action
+    confidence = output.confidence or 0.5
+    smoke_visible = output.smoke_visible
+
+    # Guardrail 1: Contradiction check (0.0 ha area cannot be Level 4/5 Critical/Dispatch)
+    if area == 0.0:
+        if danger >= 4:
+            danger = 2
+            if action in ("DISPATCH_REGIONAL", "EVACUATE", "DISPATCH"):
+                action = "INVESTIGATE"
+        if classification == "CONFIRMED_FIRE" and smoke_visible is False:
+            classification = "PROBABLE_FIRE"
+            confidence = min(confidence, 0.6)
+
+    # Guardrail 2: Visual smoke/flame check
+    if smoke_visible is False and classification == "CONFIRMED_FIRE":
+        classification = "PROBABLE_FIRE"
+        if danger >= 4:
+            danger = 3
+            action = "DISPATCH_LOCAL"
+
+    return output.model_copy(update={
+        "classification": classification,
+        "danger_level": danger,
+        "recommended_action": action,
+        "confidence": confidence,
+    })
+
+
 def parse_vlm_response(raw_text: str) -> TriageOutput:
     """
     Parse raw VLM text output into a validated TriageOutput object.
@@ -26,7 +64,7 @@ def parse_vlm_response(raw_text: str) -> TriageOutput:
     Attempts:
       1. Strip markdown code fences
       2. Extract first {...} JSON object from text
-      3. Validate with Pydantic
+      3. Validate with Pydantic + Apply Guardrails
 
     Raises:
         ValueError: if no valid JSON or schema validation fails.
@@ -59,6 +97,7 @@ def parse_vlm_response(raw_text: str) -> TriageOutput:
 
     try:
         output = TriageOutput.model_validate(data)
+        output = apply_triage_guardrails(output)
     except Exception as e:
         logger.warning("vlm_response_schema_error", error=str(e), data=str(data)[:300])
         raise ValueError(f"TriageOutput schema validation failed: {e}") from e
