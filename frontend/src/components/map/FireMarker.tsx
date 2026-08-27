@@ -31,59 +31,83 @@ function markerRadius(frp: number | null): number {
  */
 export function FireMarker({ event, triage, isSelected = false, onSelect }: FireMarkerProps) {
   const dangerLevel = triage?.danger_level;
-  const color = dangerLevel ? DANGER_COLORS[dangerLevel] : '#9CA3AF';
+  const isAlerted = event.status === 'ALERTED';
+  const color = dangerLevel ? DANGER_COLORS[dangerLevel] : isAlerted ? '#DC2626' : '#9CA3AF';
   const isRuleBased = triage?.triage_source === 'RULE_BASED_FALLBACK';
+  const radius = markerRadius(event.frp);
 
   const pathOptions = {
-    color,
+    color: isAlerted ? '#DC2626' : color,
     fillColor: color,
-    fillOpacity: isSelected ? 0.9 : triage ? 0.6 : 0.45,
-    weight: isRuleBased ? 2 : 1.5,
-    dashArray: triage ? (isRuleBased ? '4 4' : undefined) : '2 4',
+    fillOpacity: isSelected ? 0.95 : triage ? (isAlerted ? 0.85 : 0.6) : 0.45,
+    weight: isAlerted ? 3 : isRuleBased ? 2 : 1.5,
+    dashArray: triage ? (isRuleBased && !isAlerted ? '4 4' : undefined) : '2 4',
     opacity: 1,
   };
 
   return (
-    <CircleMarker
-      center={[event.lat, event.lon]}
-      radius={markerRadius(event.frp)}
-      pathOptions={pathOptions}
-      eventHandlers={{ click: () => onSelect(event.id) }}
-      data-testid="fire-marker"
-    >
-      <Popup>
-        <div className="min-w-[180px] text-sm">
-          <div className="mb-1 flex items-center gap-1.5">
-            {triage && <DangerBadge level={triage.danger_level} />}
-            {triage && <ClassificationTag classification={triage.classification} />}
+    <>
+      {/* Outer halo ring for ALERTED or Level 4/5 Critical Events */}
+      {(isAlerted || (dangerLevel && dangerLevel >= 4)) && (
+        <CircleMarker
+          center={[event.lat, event.lon]}
+          radius={radius + 7}
+          pathOptions={{
+            color: '#DC2626',
+            fillColor: '#EF4444',
+            fillOpacity: 0.25,
+            weight: 2,
+            dashArray: '3 3',
+          }}
+          interactive={false}
+        />
+      )}
+      <CircleMarker
+        center={[event.lat, event.lon]}
+        radius={radius}
+        pathOptions={pathOptions}
+        eventHandlers={{ click: () => onSelect(event.id) }}
+        data-testid="fire-marker"
+      >
+        <Popup>
+          <div className="min-w-[180px] text-sm">
+            <div className="mb-1 flex items-center gap-1.5 flex-wrap">
+              {isAlerted && (
+                <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                  🚨 ALERTED
+                </span>
+              )}
+              {triage && <DangerBadge level={triage.danger_level} />}
+              {triage && <ClassificationTag classification={triage.classification} />}
+            </div>
+            {triage && (
+              <div className="mb-1">
+                <TriageSourceBadge source={triage.triage_source} />
+              </div>
+            )}
+            <div className="text-xs text-gray-600 space-y-0.5">
+              <div>
+                <span className="font-medium">Location:</span> {formatCoords(event.lat, event.lon)}
+              </div>
+              <div>
+                <span className="font-medium">FRP:</span> {formatFRP(event.frp)}
+              </div>
+              <div>
+                <span className="font-medium">Detected:</span> {formatDate(event.detected_at)}
+              </div>
+              <div>
+                <span className="font-medium">Satellite:</span> {event.satellite}
+              </div>
+            </div>
+            <button
+              className="mt-2 w-full rounded bg-orange-500 px-2 py-1 text-xs text-white hover:bg-orange-600 transition-colors"
+              onClick={() => onSelect(event.id)}
+            >
+              View Triage Report →
+            </button>
           </div>
-          {triage && (
-            <div className="mb-1">
-              <TriageSourceBadge source={triage.triage_source} />
-            </div>
-          )}
-          <div className="text-xs text-gray-600 space-y-0.5">
-            <div>
-              <span className="font-medium">Location:</span> {formatCoords(event.lat, event.lon)}
-            </div>
-            <div>
-              <span className="font-medium">FRP:</span> {formatFRP(event.frp)}
-            </div>
-            <div>
-              <span className="font-medium">Detected:</span> {formatDate(event.detected_at)}
-            </div>
-            <div>
-              <span className="font-medium">Satellite:</span> {event.satellite}
-            </div>
-          </div>
-          <button
-            className="mt-2 w-full rounded bg-orange-500 px-2 py-1 text-xs text-white hover:bg-orange-600 transition-colors"
-            onClick={() => onSelect(event.id)}
-          >
-            View Triage Report →
-          </button>
-        </div>
-      </Popup>
-    </CircleMarker>
+        </Popup>
+      </CircleMarker>
+    </>
   );
 }

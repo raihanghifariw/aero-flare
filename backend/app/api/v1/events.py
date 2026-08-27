@@ -44,8 +44,11 @@ async def list_events(
     danger_level: int | None = Query(None, ge=1, le=5, description="Filter by danger level"),
     db: AsyncSession = Depends(get_db),
 ) -> FireEventsResponse:
-    """Retrieve a paginated list of fire events with optional filters."""
-    stmt = select(FireEvent).order_by(FireEvent.detected_at.desc())
+    from sqlalchemy import case
+    stmt = select(FireEvent).order_by(
+        case((FireEvent.status == "ALERTED", 0), else_=1),
+        FireEvent.detected_at.desc(),
+    )
 
     if status:
         stmt = stmt.where(FireEvent.status == status)

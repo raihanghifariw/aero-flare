@@ -183,6 +183,11 @@ export function EventSidebar({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                    {event.status === 'ALERTED' && (
+                      <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider animate-pulse">
+                        🚨 ALERTED
+                      </span>
+                    )}
                     {triage ? (
                       <>
                         <DangerBadge level={triage.danger_level} />
