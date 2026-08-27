@@ -1,0 +1,63 @@
+﻿# ============================================================
+# Aero-Flare .gitignore
+# ============================================================
+
+# --- Secrets ---
+.env
+.env.local
+.env.production
+.env.staging
+.act.secrets
+
+# --- Python ---
+backend/.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+htmlcov/
+.coverage
+coverage.xml
+
+# --- Node / Frontend ---
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+frontend/out/
+frontend/.vercel/
+
+# --- Data (never commit raw data) ---
+data/firms/*.csv
+data/tiles/
+*.ubj
+
+# --- Model artifacts ---
+backend/app/ml/models/*.ubj
+ml/models/*.ubj
+ml/models/*.json
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Docker ---
+*.pem
+*.key
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- IDE ---
+.vscode/settings.json
+.idea/
+*.swp
+
+# --- act (local GitHub Actions runner) ---
+.actrc

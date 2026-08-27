@@ -1,0 +1,60 @@
+version: '3.8'
+
+# Aero-Flare local development stack
+# Note: Pipeline cron (FIRMS ingestion) runs via GitHub Actions, not a local service.
+#       To test ingestion locally: python backend/scripts/ingest_firms.py
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENVIRONMENT: development
+    depends_on:
+      - ollama
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+      - ./prompts:/app/prompts
+      - ./ml/models:/app/ml/models
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_API_URL: http://backend:8000
+      BACKEND_API_KEY: ${BACKEND_API_KEY}
+      # NEXT_PUBLIC_API_KEY intentionally absent — use server-side proxy
+    depends_on:
+      - backend
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Pull model on first run: docker exec -it <container> ollama pull qwen2-vl:7b
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  ollama_data:

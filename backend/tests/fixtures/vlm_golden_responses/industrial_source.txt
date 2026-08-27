@@ -1,0 +1,10 @@
+{
+  "classification": "INDUSTRIAL_SOURCE",
+  "confidence": 0.82,
+  "danger_level": 1,
+  "fire_area_ha": 0.0,
+  "smoke_direction": "S",
+  "recommended_action": "MONITOR",
+  "summary": "Persistent thermal anomaly co-located with industrial facility (likely palm oil mill or refinery). Heat source is stationary and bounded. No expanding fire perimeter detected.",
+  "triage_source": "vlm"
+}

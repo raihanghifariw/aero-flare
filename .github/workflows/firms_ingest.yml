@@ -1,0 +1,73 @@
+name: FIRMS Ingestion Pipeline
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'   # Every 3 hours (UTC)
+  workflow_dispatch:          # Manual trigger from Actions tab
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Health check — backend reachable
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            ${{ secrets.BACKEND_API_URL }}/api/v1/health || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Backend unhealthy (HTTP $STATUS) — aborting pipeline"
+            exit 1
+          fi
+          echo "Backend healthy ($STATUS)"
+
+      - name: Health check — Ollama tunnel reachable
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            ${{ secrets.OLLAMA_BASE_URL }}/api/tags || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            curl -s -X POST \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
+              --data-urlencode "text=⚠️ Aero-Flare: Ollama tunnel unreachable (HTTP $STATUS) — triage paused"
+            echo "::warning::Ollama unreachable — pipeline will use rule-based fallback"
+          fi
+
+      - name: Run FIRMS ingestion + triage
+        env:
+          FIRMS_API_KEY: ${{ secrets.FIRMS_API_KEY }}
+          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
+          BACKEND_API_KEY: ${{ secrets.BACKEND_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLOUDFLARE_R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET: ${{ secrets.CLOUDFLARE_R2_SECRET }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
+          OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: python backend/scripts/ingest_firms.py
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: ingest
+    if: failure()
+    steps:
+      - name: Send Telegram failure alert
+        run: |
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
+            --data-urlencode "text=⚠️ AERO-FLARE PIPELINE FAILURE
+
+FIRMS ingestion job failed. Check GitHub Actions tab for details.
+Run ID: ${{ github.run_id }}"

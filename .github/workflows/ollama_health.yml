@@ -1,0 +1,37 @@
+name: Ollama Tunnel Health Check
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # Every 30 minutes
+  workflow_dispatch:           # Manual trigger from Actions tab
+
+jobs:
+  check-ollama:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping Ollama tunnel
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            --connect-timeout 10 --max-time 15 \
+            "${{ secrets.OLLAMA_BASE_URL }}/api/tags" || echo "000")
+
+          echo "Ollama tunnel status: $STATUS"
+
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Ollama unreachable (HTTP $STATUS) — triage will use rule-based fallback"
+
+            # Send Telegram alert
+            curl -s -X POST \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
+              --data-urlencode "text=⚠️ Aero-Flare: Ollama tunnel unreachable (HTTP $STATUS)
+
+VLM triage is PAUSED — rule-based fallback will activate for the next ingestion run.
+
+Action required: restart cloudflared tunnel or ngrok on your local machine.
+
+Workflow: ${{ github.workflow }} | Run: ${{ github.run_id }}"
+          else
+            echo "Ollama tunnel healthy ✅"
+          fi

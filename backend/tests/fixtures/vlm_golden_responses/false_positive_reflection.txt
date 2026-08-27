@@ -1,0 +1,18 @@
+Sure, let me analyze this satellite image carefully.
+
+Looking at the hotspot location, I can see specular reflection patterns consistent with sun glint on a water body surface. The brightness pattern does not show the characteristic radial heat signature of a genuine fire.
+
+```json
+{
+  "classification": "FALSE_POSITIVE",
+  "confidence": 0.88,
+  "danger_level": 1,
+  "fire_area_ha": 0.0,
+  "smoke_direction": null,
+  "recommended_action": "MONITOR",
+  "summary": "Sun glint on water surface (river or coastal area). No smoke plume visible. Brightness temperature consistent with solar reflection, not combustion.",
+  "triage_source": "vlm"
+}
+```
+
+No further action required.
