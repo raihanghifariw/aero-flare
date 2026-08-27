@@ -30,6 +30,8 @@ class TriageOutput(BaseModel):
     fire_area_ha: float | None = Field(None, ge=0.0)
     smoke_visible: bool | None = Field(None)
     smoke_direction: str | None = None
+    cloud_cover_percent: float | None = Field(None, ge=0.0, le=100.0)
+    visually_obscured: bool | None = Field(None)
     summary: str | None = None
     recommended_action: RecommendedAction = "MONITOR"
     triage_source: TriageSource = "vlm"  # "vlm" | "rule_based"
@@ -45,6 +47,8 @@ class TriageReportSchema(BaseModel):
     confidence: float | None
     fire_area_ha: float | None
     smoke_direction: str | None
+    cloud_cover_percent: float | None = None
+    visually_obscured: bool | None = None
     danger_level: int | None
     summary: str | None
     recommended_action: str | None

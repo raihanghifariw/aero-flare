@@ -192,6 +192,11 @@ export function EventSidebar({
                       <>
                         <DangerBadge level={triage.danger_level} />
                         <ClassificationTag classification={triage.classification} />
+                        {triage.visually_obscured && (event.frp ?? 0) >= 50 && (
+                          <span className="rounded bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 text-[10px] font-bold flex items-center gap-1">
+                            ☁️ Obscured (High Heat)
+                          </span>
+                        )}
                       </>
                     ) : (
                       <span className="text-[10px] text-gray-400 italic">Pending analysis</span>

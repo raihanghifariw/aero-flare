@@ -20,6 +20,8 @@ export interface TriageReport {
   confidence: number; // 0.0–1.0
   fire_area_ha: number | null;
   smoke_direction: string | null;
+  cloud_cover_percent?: number | null;
+  visually_obscured?: boolean | null;
   danger_level: number; // 1–5
   summary: string;
   recommended_action: RecommendedAction;

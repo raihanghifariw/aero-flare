@@ -27,6 +27,8 @@ class TriageReport(Base):
     confidence: Mapped[float | None] = mapped_column(Double, nullable=True)
     fire_area_ha: Mapped[float | None] = mapped_column(Double, nullable=True)
     smoke_direction: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    cloud_cover_percent: Mapped[float | None] = mapped_column(Double, nullable=True)
+    visually_obscured: Mapped[bool | None] = mapped_column(nullable=True)
     danger_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     recommended_action: Mapped[str | None] = mapped_column(String(50), nullable=True)

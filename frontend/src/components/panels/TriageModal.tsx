@@ -160,6 +160,18 @@ export function TriageModal({ event, onClose }: TriageModalProps) {
                 <DangerBadge level={triage.danger_level} showLabel />
               </div>
 
+              {/* Cloud obscuration & sensor fusion alert card */}
+              {triage.visually_obscured && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                    <span>☁️ Visually Obscured by Cloud Cover</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-700">
+                    Satellite imagery is partially obscured by clouds ({triage.cloud_cover_percent ? `${triage.cloud_cover_percent.toFixed(0)}%` : '50%+'}). FIRMS thermal sensors detected high energy ({event.frp ?? 'Elevated'} MW). Priority maintained via thermal sensor fusion.
+                  </p>
+                </div>
+              )}
+
               {/* Summary */}
               <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg px-3 py-2">
                 {triage.summary}

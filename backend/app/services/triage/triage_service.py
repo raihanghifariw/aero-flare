@@ -109,7 +109,7 @@ async def run_triage(
                     raw_response=raw[:500],  # truncate for log safety
                     trace_id=get_trace_id(),
                 )
-                triage_output = parse_vlm_response(raw)
+                triage_output = parse_vlm_response(raw, event=event)
                 triage_output = triage_output.model_copy(update={"triage_source": "vlm"})
                 logger.info(
                     "vlm_triage_success",
@@ -143,6 +143,8 @@ async def run_triage(
         confidence=triage_output.confidence,
         fire_area_ha=triage_output.fire_area_ha,
         smoke_direction=triage_output.smoke_direction,
+        cloud_cover_percent=triage_output.cloud_cover_percent,
+        visually_obscured=triage_output.visually_obscured,
         danger_level=triage_output.danger_level,
         summary=triage_output.summary,
         recommended_action=triage_output.recommended_action,
