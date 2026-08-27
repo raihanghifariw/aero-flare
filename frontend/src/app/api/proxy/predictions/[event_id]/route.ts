@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBackendConfig, getBackendHeaders } from '@/lib/proxy-helper';
 
-const BACKEND_URL = process.env.BACKEND_API_URL!;
-const API_KEY = process.env.BACKEND_API_KEY!;
+export const dynamic = 'force-dynamic';
 
 interface RouteParams {
   params: { event_id: string };
@@ -15,16 +15,34 @@ export async function GET(
   _request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const backendUrl = `${BACKEND_URL}/api/v1/predictions/${params.event_id}`;
+  try {
+    const { backendUrl } = getBackendConfig();
+    const headers = getBackendHeaders();
+    const targetUrl = `${backendUrl}/api/v1/predictions/${params.event_id}`;
 
-  const response = await fetch(backendUrl, {
-    headers: {
-      'X-API-Key': API_KEY,
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
+    const response = await fetch(targetUrl, {
+      headers,
+      cache: 'no-store',
+    });
 
-  const data: unknown = await response.json();
-  return NextResponse.json(data, { status: response.status });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      let errorData: unknown;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText || `Backend returned status ${response.status}` };
+      }
+      return NextResponse.json(errorData, { status: response.status });
+    }
+
+    const data: unknown = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error(`Proxy GET /api/proxy/predictions/${params.event_id} failed:`, error);
+    return NextResponse.json(
+      { error: 'Backend service unreachable or offline', details: String(error) },
+      { status: 502 }
+    );
+  }
 }

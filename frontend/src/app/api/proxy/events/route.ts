@@ -1,34 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBackendConfig, getBackendHeaders } from '@/lib/proxy-helper';
 
-// Server-side only — BACKEND_API_KEY is NEVER a NEXT_PUBLIC_ variable
-const BACKEND_URL = process.env.BACKEND_API_URL!;
-const API_KEY = process.env.BACKEND_API_KEY!;
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/proxy/events
  * Proxies to backend GET /api/v1/events with server-side X-API-Key auth.
- * Query params (page, limit, status, danger_level, date_from, date_to) forwarded transparently.
- * Default: last 24 hours if no date_from specified.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const { searchParams } = new URL(request.url);
+  try {
+    const { backendUrl } = getBackendConfig();
+    const headers = getBackendHeaders();
 
-  // Default to last 24 hours if no date_from provided
-  if (!searchParams.has('date_from')) {
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    searchParams.set('date_from', yesterday);
+    const { searchParams } = new URL(request.url);
+
+    // Default to last 24 hours if no date_from provided
+    if (!searchParams.has('date_from')) {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      searchParams.set('date_from', yesterday);
+    }
+
+    const targetUrl = `${backendUrl}/api/v1/events?${searchParams.toString()}`;
+
+    const response = await fetch(targetUrl, {
+      headers,
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      let errorData: unknown;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText || `Backend returned status ${response.status}` };
+      }
+      return NextResponse.json(errorData, { status: response.status });
+    }
+
+    const data: unknown = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Proxy GET /api/proxy/events failed:', error);
+    return NextResponse.json(
+      { error: 'Backend service unreachable or offline', details: String(error) },
+      { status: 502 }
+    );
   }
-
-  const backendUrl = `${BACKEND_URL}/api/v1/events?${searchParams.toString()}`;
-
-  const response = await fetch(backendUrl, {
-    headers: {
-      'X-API-Key': API_KEY,
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
-
-  const data: unknown = await response.json();
-  return NextResponse.json(data, { status: response.status });
 }
