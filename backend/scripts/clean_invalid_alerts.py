@@ -31,7 +31,8 @@ print(f"Target DB: {re.sub(r':([^:@]+)@', ':***@', url)}\n")
 
 # Demote invalid ALERTED statuses to TRIAGED:
 #  1. Classification is FALSE_POSITIVE or INDUSTRIAL_SOURCE
-#  2. Danger level is <= 2 AND FRP < 30.0 MW
+#  2. Danger level is < 3
+#  3. FRP is < 30.0 MW (unless Level 4/5 CONFIRMED_FIRE)
 DEMOTE_SQL = """
 UPDATE fire_events
 SET status = 'TRIAGED'
@@ -40,8 +41,8 @@ WHERE fire_events.id = triage_reports.event_id
   AND fire_events.status = 'ALERTED'
   AND (
     triage_reports.classification IN ('FALSE_POSITIVE', 'INDUSTRIAL_SOURCE')
-    OR triage_reports.danger_level <= 1
-    OR (fire_events.frp < 30.0 AND triage_reports.danger_level <= 2)
+    OR triage_reports.danger_level < 3
+    OR (fire_events.frp < 30.0 AND triage_reports.danger_level < 4)
   );
 """
 
