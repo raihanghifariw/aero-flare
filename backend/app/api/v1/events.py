@@ -18,8 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, verify_api_key
 from app.core.security import limiter
 from app.models.fire_event import FireEvent
+from app.models.triage_report import TriageReport
 from app.schemas.common import ErrorResponse, get_trace_id
 from app.schemas.fire_event import FireEventSchema, FireEventsResponse
+from app.schemas.triage_report import TriageReportSchema
 
 router = APIRouter(prefix="/events", tags=["events"])
 logger = structlog.get_logger()
@@ -61,8 +63,30 @@ async def list_events(
     result = await db.execute(stmt.limit(limit).offset(offset))
     events = result.scalars().all()
 
+    # Batch load latest TriageReport for returned events
+    event_ids = [e.id for e in events]
+    triage_map: dict[uuid.UUID, TriageReport] = {}
+    if event_ids:
+        triage_stmt = (
+            select(TriageReport)
+            .where(TriageReport.event_id.in_(event_ids))
+            .order_by(TriageReport.processed_at.desc())
+        )
+        triage_res = await db.execute(triage_stmt)
+        for tr in triage_res.scalars().all():
+            if tr.event_id not in triage_map:
+                triage_map[tr.event_id] = tr
+
+    event_schemas = []
+    for e in events:
+        schema = FireEventSchema.model_validate(e)
+        tr = triage_map.get(e.id)
+        if tr:
+            schema = schema.model_copy(update={"triage": TriageReportSchema.model_validate(tr)})
+        event_schemas.append(schema)
+
     return FireEventsResponse(
-        data=[FireEventSchema.model_validate(e) for e in events],
+        data=event_schemas,
         total=total,
         page=page,
         page_size=limit,

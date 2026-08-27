@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.triage_report import TriageReportSchema
+
 
 class FireEventCreate(BaseModel):
     """Input schema for creating a fire event (internal use by ingestion service)."""
@@ -36,6 +38,7 @@ class FireEventSchema(BaseModel):
     status: str
     alerted_at: datetime | None  # NULL = not yet alerted (replaces Redis dedup)
     created_at: datetime
+    triage: TriageReportSchema | None = None
 
 
 # Valid status values

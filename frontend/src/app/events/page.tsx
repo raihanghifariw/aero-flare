@@ -35,7 +35,7 @@ export default function EventsPage() {
   });
 
   const events: FireEvent[] = data?.data ?? [];
-  const triageMap = useTriageMap(events.map((event) => event.id));
+  const triageMap = useTriageMap(events);
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 

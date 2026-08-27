@@ -1,12 +1,11 @@
-// TypeScript types mirroring backend Pydantic schemas
-// Kept in sync with: backend/app/schemas/fire_event.py
+import type { TriageReport } from './triage-report';
 
 export type FireStatus = 'PENDING' | 'TRIAGED' | 'ALERTED' | 'ARCHIVED';
 
 export interface FireEvent {
   id: string;
   firms_id: string;
-  detected_at: string; // ISO8601
+  detected_at: string; // ISO8601;
   lat: number;
   lon: number;
   frp: number | null; // Fire Radiative Power (MW)
@@ -16,6 +15,7 @@ export interface FireEvent {
   status: FireStatus;
   alerted_at: string | null; // ISO8601; null = not yet alerted
   created_at: string; // ISO8601
+  triage?: TriageReport | null;
 }
 
 export interface FireEventsResponse {

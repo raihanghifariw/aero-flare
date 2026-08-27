@@ -1,36 +1,46 @@
 import useSWR from 'swr';
 import { apiFetch } from '@/lib/api';
+import type { FireEvent } from '@/types/fire-event';
 import type { TriageReport } from '@/types/triage-report';
 
 /**
- * Fetches triage reports for a list of event IDs in parallel via SWR.
+ * Extracts embedded triage reports from FireEvents and fetches missing reports in parallel.
  * Returns a lookup map: event_id → TriageReport.
- *
- * SWR deduplicates concurrent requests for the same key, so calling this
- * hook and useTriageReport(id) for the same id will share the same cache entry.
  */
-export function useTriageMap(eventIds: string[]): Record<string, TriageReport> {
-  // Build a stable key from sorted IDs so the hook re-runs when the list changes
-  const key = eventIds.length > 0 ? eventIds.slice().sort().join(',') : null;
+export function useTriageMap(eventsOrIds: (FireEvent | string)[]): Record<string, TriageReport> {
+  const embeddedMap: Record<string, TriageReport> = {};
+  const missingIds: string[] = [];
+
+  for (const item of eventsOrIds) {
+    if (typeof item === 'string') {
+      missingIds.push(item);
+    } else if (item.triage) {
+      embeddedMap[item.id] = item.triage;
+    } else {
+      missingIds.push(item.id);
+    }
+  }
+
+  const key = missingIds.length > 0 ? missingIds.slice().sort().join(',') : null;
 
   const { data } = useSWR<Record<string, TriageReport>>(
     key ? `__triage_map__${key}` : null,
     async () => {
       const results = await Promise.allSettled(
-        eventIds.map((id) =>
+        missingIds.map((id) =>
           apiFetch<TriageReport>(`/triage/${id}`).then((t) => ({ id, triage: t }))
         )
       );
-      const map: Record<string, TriageReport> = {};
+      const resMap: Record<string, TriageReport> = {};
       for (const result of results) {
         if (result.status === 'fulfilled') {
-          map[result.value.id] = result.value.triage;
+          resMap[result.value.id] = result.value.triage;
         }
       }
-      return map;
+      return resMap;
     },
     { revalidateOnFocus: false, keepPreviousData: true }
   );
 
-  return data ?? {};
+  return { ...embeddedMap, ...(data ?? {}) };
 }

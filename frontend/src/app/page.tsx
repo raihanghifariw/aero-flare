@@ -69,7 +69,7 @@ export default function DashboardPage() {
 
   // Batch-fetch triage data for all loaded events so the sidebar can show
   // classification + danger badges without waiting for modal open.
-  const triageMap = useTriageMap(events.map((e) => e.id));
+  const triageMap = useTriageMap(events);
 
   const visibleEvents = useMemo(() => events.filter((event) => {
     const triage = triageMap[event.id];
