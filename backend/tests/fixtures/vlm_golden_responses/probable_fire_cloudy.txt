@@ -1,0 +1,14 @@
+The image shows partial cloud cover obscuring portions of the thermal anomaly. Based on visible edges:
+
+```json
+{
+  "classification": "PROBABLE_FIRE",
+  "confidence": 0.63,
+  "danger_level": 2,
+  "fire_area_ha": 30.0,
+  "smoke_direction": "NE",
+  "recommended_action": "MONITOR",
+  "summary": "Probable vegetation fire partially obscured by cloud cover. Smoke plume visible at image edge. Confidence reduced due to incomplete thermal signature visibility. Recommend monitoring next satellite pass.",
+  "triage_source": "vlm"
+}
+```

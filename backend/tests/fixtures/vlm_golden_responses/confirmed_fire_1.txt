@@ -1,0 +1,12 @@
+```json
+{
+  "classification": "CONFIRMED_FIRE",
+  "confidence": 0.94,
+  "danger_level": 4,
+  "fire_area_ha": 125.5,
+  "smoke_direction": "NW",
+  "recommended_action": "DISPATCH_LOCAL",
+  "summary": "Active wildfire visible in peatland area. Dense smoke plume extends to the northwest. Fire perimeter clearly defined with high thermal signature.",
+  "triage_source": "vlm"
+}
+```

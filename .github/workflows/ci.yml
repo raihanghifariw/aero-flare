@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run unit tests
+        run: pytest backend/tests/unit/ -v --tb=short --cov=backend/app --cov-report=term-missing
+
+      - name: Type check
+        run: mypy backend/app --strict
+
+      - name: Lint
+        run: ruff check backend/app
+
+      - name: Dependency audit (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt --severity high
+        # Fails build on any HIGH or CRITICAL vulnerability with an available fix.
+        # If a finding has no fix (unfixable), document it in docs/security/unfixable_cves.md
+        # and add --ignore-vuln <VULN-ID> here with justification.
+
+  backend-security:
+    runs-on: ubuntu-latest
+    needs: backend-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t aero-flare-backend:ci ./backend
+
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'aero-flare-backend:ci'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Dependency audit (npm audit)
+        run: cd frontend && npm audit --audit-level=moderate
+        # Fails build on MODERATE and above. Suppress only with documented justification.
+
+      - name: Lint
+        run: cd frontend && npm run lint
+
+      - name: Type check
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Install Playwright browsers
+        run: cd frontend && npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: cd frontend && npx playwright test
+
+  deploy-backend:
+    needs: [backend-test, backend-security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          railway up --service backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  deploy-frontend:
+    needs: frontend-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: --prod
