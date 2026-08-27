@@ -44,7 +44,7 @@ async def main() -> None:
     )
 
     from app.models.base import async_session_factory
-    from app.services.ingestion.firms_parser import fetch_firms_csv, parse_firms_csv
+    from app.services.ingestion.firms_parser import fetch_firms_data, parse_firms_csv
     from app.services.ingestion.gibs_tile_fetcher import fetch_and_upload_tile
     from app.services.ingestion.event_writer import upsert_events
     from app.services.triage.triage_service import run_triage
@@ -54,11 +54,10 @@ async def main() -> None:
     # Step 1 — Fetch + parse FIRMS                                         #
     # ------------------------------------------------------------------ #
     logger.info("ingest_firms.step1_fetch_firms")
-    raw_csv = await fetch_firms_csv(
+    csv_path = await fetch_firms_data(
         api_key=settings.FIRMS_API_KEY,
-        area_url=settings.FIRMS_AREA_URL,
     )
-    events_data = parse_firms_csv(raw_csv)
+    events_data = parse_firms_csv(csv_path)
     logger.info("ingest_firms.firms_parsed", count=len(events_data))
 
     if not events_data:
@@ -70,13 +69,32 @@ async def main() -> None:
     # ------------------------------------------------------------------ #
     logger.info("ingest_firms.step2_upsert_events")
     async with async_session_factory() as db:
-        new_events = await upsert_events(events_data, db=db)
+        from app.services.ingestion.event_writer import upsert_fire_events
+        new_ids, skipped = await upsert_fire_events(events_data, db=db)
         await db.commit()
-    logger.info("ingest_firms.events_upserted", new=len(new_events))
+    new_event_ids = new_ids
+    logger.info("ingest_firms.events_upserted", new=len(new_event_ids), skipped=skipped)
 
     # ------------------------------------------------------------------ #
     # Step 3 — Fetch GIBS tiles and triage each new event                  #
     # ------------------------------------------------------------------ #
+    if not new_event_ids:
+        logger.info("ingest_firms.no_new_events")
+        return
+
+    from sqlalchemy import select as sa_select
+    from app.models.fire_event import FireEvent
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            sa_select(FireEvent)
+            .where(FireEvent.id.in_([
+                __import__('uuid').UUID(eid) for eid in new_event_ids
+            ]))
+            .order_by(FireEvent.frp.desc().nullslast())
+        )
+        new_events = result.scalars().all()
+
     for event in new_events:
         async with async_session_factory() as db:
             # Fetch tile (non-blocking, errors soft-fail)

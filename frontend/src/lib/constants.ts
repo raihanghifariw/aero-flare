@@ -50,17 +50,23 @@ export const CLASSIFICATION_CLASSES: Record<Classification, string> = {
 // ─── Recommended Action ───────────────────────────────────────────────────────
 
 /** Human-readable display labels for recommended actions. */
-export const ACTION_LABELS: Record<RecommendedAction, string> = {
+export const ACTION_LABELS: Record<string, string> = {
   MONITOR: 'Monitor',
   DISPATCH: 'Dispatch Units',
+  DISPATCH_LOCAL: 'Dispatch Local',
+  DISPATCH_REGIONAL: 'Dispatch Regional',
   EVACUATE: 'Evacuate Area',
+  INVESTIGATE: 'Investigate',
 };
 
 /** Tailwind class pairs for action pills. */
-export const ACTION_CLASSES: Record<RecommendedAction, string> = {
+export const ACTION_CLASSES: Record<string, string> = {
   MONITOR: 'bg-slate-100 text-slate-700',
   DISPATCH: 'bg-orange-100 text-orange-800',
+  DISPATCH_LOCAL: 'bg-orange-100 text-orange-800',
+  DISPATCH_REGIONAL: 'bg-red-100 text-red-800',
   EVACUATE: 'bg-red-100 text-red-800',
+  INVESTIGATE: 'bg-yellow-100 text-yellow-800',
 };
 
 // ─── Map ──────────────────────────────────────────────────────────────────────
