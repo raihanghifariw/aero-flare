@@ -16,34 +16,38 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
 
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
       - name: Health check — backend reachable
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            ${{ secrets.BACKEND_API_URL }}/api/v1/health || echo "000")
-          if [ "$STATUS" != "200" ]; then
-            echo "::error::Backend unhealthy (HTTP $STATUS) — aborting pipeline"
-            exit 1
+          if [ -n "${{ secrets.BACKEND_API_URL }}" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              ${{ secrets.BACKEND_API_URL }}/api/v1/health || echo "000")
+            if [ "$STATUS" != "200" ]; then
+              echo "::warning::Backend unreachable (HTTP $STATUS) — proceeding with direct DB ingestion"
+            else
+              echo "Backend healthy ($STATUS)"
+            fi
+          else
+            echo "::notice::BACKEND_API_URL secret not set — proceeding with direct DB ingestion"
           fi
-          echo "Backend healthy ($STATUS)"
 
       - name: Health check — Ollama tunnel reachable
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            ${{ secrets.OLLAMA_BASE_URL }}/api/tags || echo "000")
-          if [ "$STATUS" != "200" ]; then
-            curl -s -X POST \
-              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-              -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-              --data-urlencode "text=⚠️ Aero-Flare: Ollama tunnel unreachable (HTTP $STATUS) — triage paused"
-            echo "::warning::Ollama unreachable — pipeline will use rule-based fallback"
+          if [ -n "${{ secrets.OLLAMA_BASE_URL }}" ]; then
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              ${{ secrets.OLLAMA_BASE_URL }}/api/tags || echo "000")
+            if [ "$STATUS" != "200" ]; then
+              echo "::warning::Ollama unreachable — pipeline will use rule-based fallback"
+            fi
           fi
 
       - name: Run FIRMS ingestion + triage
         env:
+          PYTHONPATH: backend
           FIRMS_API_KEY: ${{ secrets.FIRMS_API_KEY }}
           BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
           BACKEND_API_KEY: ${{ secrets.BACKEND_API_KEY }}
@@ -64,10 +68,9 @@ jobs:
     steps:
       - name: Send Telegram failure alert
         run: |
-          curl -s -X POST \
-            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            --data-urlencode "text=⚠️ AERO-FLARE PIPELINE FAILURE
-
-FIRMS ingestion job failed. Check GitHub Actions tab for details.
-Run ID: ${{ github.run_id }}"
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+            curl -s -X POST \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
+              --data-urlencode "text=⚠️ AERO-FLARE PIPELINE FAILURE: FIRMS ingestion job failed. Run ID: ${{ github.run_id }}"
+          fi

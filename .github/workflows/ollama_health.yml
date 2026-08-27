@@ -21,17 +21,12 @@ jobs:
           if [ "$STATUS" != "200" ]; then
             echo "::warning::Ollama unreachable (HTTP $STATUS) — triage will use rule-based fallback"
 
-            # Send Telegram alert
-            curl -s -X POST \
-              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-              -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-              --data-urlencode "text=⚠️ Aero-Flare: Ollama tunnel unreachable (HTTP $STATUS)
-
-VLM triage is PAUSED — rule-based fallback will activate for the next ingestion run.
-
-Action required: restart cloudflared tunnel or ngrok on your local machine.
-
-Workflow: ${{ github.workflow }} | Run: ${{ github.run_id }}"
+            if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+              curl -s -X POST \
+                "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+                -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
+                --data-urlencode "text=⚠️ Aero-Flare: Ollama tunnel unreachable (HTTP $STATUS). VLM triage is PAUSED — rule-based fallback will activate."
+            fi
           else
             echo "Ollama tunnel healthy ✅"
           fi
