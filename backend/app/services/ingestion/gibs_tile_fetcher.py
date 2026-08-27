@@ -147,3 +147,20 @@ def get_r2_presigned_url(r2_key: str, expires_in: int = 3600) -> str:
         Params={"Bucket": settings.CLOUDFLARE_R2_BUCKET_NAME, "Key": r2_key},
         ExpiresIn=expires_in,
     )
+
+
+async def fetch_and_upload_tile(event: object) -> str | None:
+    """
+    Helper for FireEvent objects — extracts lat, lon, detected_at, id and calls fetch_gibs_tile.
+    """
+    detected_at = getattr(event, "detected_at", None)
+    if detected_at:
+        date_str = detected_at.strftime("%Y-%m-%d")
+    else:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return await fetch_gibs_tile(
+        lat=getattr(event, "lat"),
+        lon=getattr(event, "lon"),
+        date_str=date_str,
+        event_id=str(getattr(event, "id")),
+    )
