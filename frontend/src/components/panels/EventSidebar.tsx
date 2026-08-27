@@ -63,7 +63,7 @@ export function EventSidebar({
   }
 
   const filtered = events.filter((event) => {
-    const triage = triageMap[event.id];
+    const triage = triageMap[event.id] || event.triage;
     if (dangerFilter !== null && (!triage || triage.danger_level !== dangerFilter)) {
       return false;
     }
@@ -177,7 +177,7 @@ export function EventSidebar({
         )}
 
         {filtered.map((event) => {
-          const triage = triageMap[event.id];
+          const triage = triageMap[event.id] || event.triage;
           const isSelected = selectedEventId === event.id;
 
           return (
