@@ -101,8 +101,8 @@ export function EventSidebar({
           <button
             onClick={() => onDangerFilterChange(null)}
             className={clsx(
-              'px-2 py-0.5 rounded text-xs font-medium',
-              dangerFilter === null ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'
+              'px-2 py-0.5 rounded text-xs font-medium transition-colors',
+              dangerFilter === null ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             )}
           >
             All
@@ -114,8 +114,10 @@ export function EventSidebar({
               title={`Danger level ${lvl}`}
               onClick={() => onDangerFilterChange(dangerFilter === lvl ? null : lvl)}
               className={clsx(
-                'px-2 py-0.5 rounded text-xs font-bold transition-opacity',
-                dangerFilter === lvl ? 'opacity-100 ring-2 ring-offset-1 ring-gray-400' : 'opacity-75'
+                'rounded transition-all focus:outline-none',
+                dangerFilter === lvl
+                  ? 'ring-2 ring-slate-900 ring-offset-1 scale-105 opacity-100'
+                  : 'opacity-80 hover:opacity-100'
               )}
             >
               <DangerBadge level={lvl} />
@@ -128,13 +130,13 @@ export function EventSidebar({
           {ALL_CLASSIFICATIONS.map((c) => (
             <label
               key={c}
-              className="flex items-center gap-1 cursor-pointer"
+              className="flex items-center gap-1 cursor-pointer select-none"
             >
               <input
                 type="checkbox"
                 checked={classFilter.has(c)}
                 onChange={() => toggleClass(c)}
-                className="h-3 w-3 rounded text-orange-500"
+                className="h-3 w-3 rounded text-orange-500 focus:ring-orange-400"
               />
               <span className="text-xs text-gray-600">{CLASSIFICATION_LABELS_SHORT[c]}</span>
             </label>

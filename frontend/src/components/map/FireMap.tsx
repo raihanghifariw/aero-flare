@@ -101,7 +101,7 @@ export function FireMap({
       {events.length > 1 && <FitBounds events={events} />}
 
       {events.map((event) => {
-        const triage = triageMap[event.id];
+        const triage = triageMap[event.id] || event.triage;
         const prediction = predictionMap[event.id];
         return (
           // React.Fragment avoids invalid nesting — Leaflet layers must be

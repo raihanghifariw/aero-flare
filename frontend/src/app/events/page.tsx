@@ -109,7 +109,7 @@ export default function EventsPage() {
               {events.map((event) => (
                 <tr key={event.id} className="hover:bg-orange-50 transition-colors">
                   {(() => {
-                    const triage = triageMap[event.id];
+                    const triage = triageMap[event.id] || event.triage;
                     return (
                       <>
                         <td className="px-4 py-2.5">

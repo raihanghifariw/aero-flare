@@ -33,19 +33,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.ENVIRONMENT)
     logger.info("aero_flare_starting", environment=settings.ENVIRONMENT, version="1.0.0")
-
-    # Auto-migration safety check for PostgreSQL DB columns
-    try:
-        from sqlalchemy import text
-        from app.core.database import async_session_factory
-        async with async_session_factory() as session:
-            await session.execute(text("ALTER TABLE triage_reports ADD COLUMN IF NOT EXISTS cloud_cover_percent DOUBLE PRECISION;"))
-            await session.execute(text("ALTER TABLE triage_reports ADD COLUMN IF NOT EXISTS visually_obscured BOOLEAN;"))
-            await session.commit()
-            logger.info("database_columns_verified")
-    except Exception as e:
-        logger.warning("database_auto_migration_skipped", error=str(e))
-
     yield
     logger.info("aero_flare_shutdown")
 
@@ -72,10 +59,22 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
+    # --- HTTPS redirect in production ---
+    # NOTE: Disabled — Railway handles TLS termination at the load balancer level.
+    # Enabling HTTPSRedirectMiddleware would break Railway's health checks
+    # which probe via HTTP internally before TLS is established.
+    # if settings.ENVIRONMENT == "production":
+    #     app.add_middleware(HTTPSRedirectMiddleware)
+
     # --- CORS ---
+    allowed_origins = (
+        ["https://aero-flare.vercel.app"]
+        if settings.ENVIRONMENT == "production"
+        else ["http://localhost:3000", "http://127.0.0.1:3000"]
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -124,7 +123,7 @@ def create_app() -> FastAPI:
             status_code=500,
             content={
                 "error": "INTERNAL_SERVER_ERROR",
-                "message": str(exc),
+                "message": "An unexpected error occurred.",
                 "trace_id": get_trace_id(),
             },
         )

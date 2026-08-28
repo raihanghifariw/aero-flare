@@ -86,7 +86,7 @@ export default function DashboardPage() {
   const triageMap = useTriageMap(events);
 
   const visibleEvents = useMemo(() => events.filter((event) => {
-    const triage = triageMap[event.id];
+    const triage = triageMap[event.id] || event.triage;
     if (dangerFilter !== null && triage?.danger_level !== dangerFilter) return false;
     if (classFilter.size > 0 && (!triage || !classFilter.has(triage.classification))) return false;
     return true;
@@ -136,7 +136,6 @@ export default function DashboardPage() {
           )}
 
           <FireMap
-            key={visibleEvents.map((event) => event.id).join('|') || 'empty'}
             events={visibleEvents}
             triageMap={triageMap}
             selectedEventId={selectedEventId}
@@ -172,7 +171,7 @@ export default function DashboardPage() {
           {/* Simplified mobile list — full sidebar is available on tablet+ */}
           <div className="max-h-48 overflow-y-auto bg-white border-t border-gray-200 shadow-lg">
             <EventSidebar
-              events={visibleEvents}
+              events={events}
               triageMap={triageMap}
               isLoading={eventsLoading}
               error={eventsError ?? null}
