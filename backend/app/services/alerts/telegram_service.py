@@ -30,11 +30,25 @@ async def send_telegram_alert(
     try:
         bot = Bot(token=bot_token)
         async with bot:
-            await bot.send_message(
-                chat_id=channel_id,
-                text=message,
-                parse_mode="Markdown",
-            )
+            try:
+                await bot.send_message(
+                    chat_id=channel_id,
+                    text=message,
+                    parse_mode="HTML",
+                    disable_web_page_preview=False,
+                )
+            except TelegramError as html_err:
+                logger.warning(
+                    "telegram_html_parse_failed_falling_back_to_plain",
+                    channel_id=channel_id,
+                    error=str(html_err),
+                )
+                import re
+                plain_text = re.sub(r"<[^>]+>", "", message)
+                await bot.send_message(
+                    chat_id=channel_id,
+                    text=plain_text,
+                )
         logger.info("telegram_alert_sent", channel_id=channel_id)
         return True
 

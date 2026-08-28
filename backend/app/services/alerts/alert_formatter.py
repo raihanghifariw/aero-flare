@@ -130,10 +130,9 @@ def format_alert_message(
         r12 = getattr(prediction, "radius_12h_km", None)
         radius_6h = f"{r6:.1f} km" if isinstance(r6, (int, float)) else "—"
         radius_12h = f"{r12:.1f} km" if isinstance(r12, (int, float)) else "—"
-        spread_info = f"Arah: *{spread_dir}* | 6h: *{radius_6h}* | 12h: *{radius_12h}*"
+        spread_info = f"Arah: <b>{spread_dir}</b> | 6h: <b>{radius_6h}</b> | 12h: <b>{radius_12h}</b>"
     else:
         spread_info = "Prediksi cuaca/rambatan belum tersedia"
-
     # AI Reasoning
     reasoning_summary = getattr(triage, "summary", None) or "Terdeteksi anomali termal aktif oleh sensor satelit."
     action_protocol = get_action_protocol(getattr(triage, "recommended_action", None))
@@ -144,28 +143,35 @@ def format_alert_message(
     visual_status = "☁️ Terhalang Awan (High Heat)" if (obscured and frp_val >= 50) else "👁️ Terbuka / Terverifikasi"
     sat_name = event.satellite if isinstance(getattr(event, "satellite", None), str) else "VIIRS/MODIS"
 
+    # Escape any stray HTML characters in dynamic text
+    import html
+    safe_location = html.escape(str(location_name))
+    safe_summary = html.escape(str(reasoning_summary))
+    safe_protocol = html.escape(str(action_protocol))
+    safe_class = html.escape(str(triage.classification))
+    safe_action = html.escape(str(triage.recommended_action or 'MONITOR'))
+
     return (
-        f"🚨 *AERO-FLARE EARLY WARNING SYSTEM* 🚨\n"
+        f"🚨 <b>AERO-FLARE EARLY WARNING SYSTEM</b> 🚨\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔥 *STATUS: ALERTED — DANGER LEVEL {triage.danger_level}/5*\n"
-        f"⚠️ *Kategori:* *{danger_title}*\n\n"
-        f"📍 *Lokasi:* {location_name}\n"
-        f"🌐 *Koordinat:* `{event.lat:.4f}, {event.lon:.4f}`\n"
-        f"🛰️ *Satelit:* {sat_name} | 🗓️ *Waktu:* {ts}\n\n"
-        f"⚡ *Intensitas Panas (FRP):* *{frp_val:.1f} MW* {frp_emoji}\n"
-        f"📊 *Skala FRP:* *{frp_cat}*\n"
-        f"📝 *Analisis Termal:* _{frp_desc}_\n\n"
-        f"🧠 *Keputusan AI Triage:*\n"
-        f"• Klasifikasi: *{triage.classification}* (Keyakinan: {confidence_pct}%) [{triage_src}]\n"
-        f"• Estimasi Area Api: *{fire_area} ha* | Tutupan Awan: *{cloud_text}*\n"
-        f"• Status Visual: *{visual_status}*\n"
-        f"• Dasar Pertimbangan: _{reasoning_summary}_\n\n"
-        f"💨 *Prediksi Rambatan Api:*\n"
+        f"🔥 <b>STATUS: ALERTED — DANGER LEVEL {triage.danger_level}/5</b>\n"
+        f"⚠️ <b>Kategori:</b> <b>{danger_title}</b>\n\n"
+        f"📍 <b>Lokasi:</b> {safe_location}\n"
+        f"🌐 <b>Koordinat:</b> <code>{event.lat:.4f}, {event.lon:.4f}</code>\n"
+        f"🛰️ <b>Satelit:</b> {sat_name} | 🗓️ <b>Waktu:</b> {ts}\n\n"
+        f"⚡ <b>Intensitas Panas (FRP):</b> <b>{frp_val:.1f} MW</b> {frp_emoji}\n"
+        f"📊 <b>Skala FRP:</b> <b>{frp_cat}</b>\n"
+        f"📝 <b>Analisis Termal:</b> <i>{frp_desc}</i>\n\n"
+        f"🧠 <b>Keputusan AI Triage:</b>\n"
+        f"• Klasifikasi: <b>{safe_class}</b> (Keyakinan: {confidence_pct}%) [{triage_src}]\n"
+        f"• Estimasi Area Api: <b>{fire_area} ha</b> | Tutupan Awan: <b>{cloud_text}</b>\n"
+        f"• Status Visual: <b>{visual_status}</b>\n"
+        f"• Dasar Pertimbangan: <i>{safe_summary}</i>\n\n"
+        f"💨 <b>Prediksi Rambatan Api:</b>\n"
         f"• {spread_info}\n\n"
-        f"🚒 *Rekomendasi Tindakan Cepat:* *{triage.recommended_action or 'MONITOR'}*\n"
-        f"📋 *Protokol:* _{action_protocol}_\n\n"
-        f"🔗 *Buka Insiden di Dashboard:*\n"
-        f"{DASHBOARD_URL}/events/{event.id}\n"
+        f"🚒 <b>Rekomendasi Tindakan Cepat:</b> <b>{safe_action}</b>\n"
+        f"📋 <b>Protokol:</b> <i>{safe_protocol}</i>\n\n"
+        f"🔗 <a href=\"{DASHBOARD_URL}/events/{event.id}\"><b>Buka Insiden di Dashboard</b></a>\n"
         f"━━━━━━━━━━━━━━━━━━━━━"
     )
 
