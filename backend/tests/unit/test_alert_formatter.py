@@ -23,6 +23,7 @@ def _mock_event(
     event.lat = lat
     event.lon = lon
     event.status = "TRIAGED"
+    event.satellite = "VIIRS-SNPP"
     event.detected_at = detected_at or datetime(2024, 7, 15, 6, 0, 0, tzinfo=timezone.utc)
     return event
 
@@ -45,6 +46,8 @@ def _mock_triage(
     t.fire_area_ha = fire_area_ha
     t.recommended_action = recommended_action
     t.summary = summary
+    t.cloud_cover_percent = 10.0
+    t.visually_obscured = False
     return t
 
 
@@ -106,3 +109,24 @@ class TestFormatAlertMessage:
         msg = format_alert_message(event, triage, None, "West Papua")
         keywords = {"🔥", "⚠", "HIGH", "WARNING", "ALERT", "FIRE"}
         assert any(kw in msg for kw in keywords)
+
+    def test_frp_explainability_bands(self) -> None:
+        """Alert message must correctly identify and explain the FRP thermal band."""
+        from app.services.alerts.alert_formatter import get_frp_explanation
+
+        low_cat, _, low_desc = get_frp_explanation(15.0)
+        assert "Low" in low_cat
+        assert "slash-and-burn" in low_desc
+
+        mid_cat, _, mid_desc = get_frp_explanation(88.6)
+        assert "Moderate" in mid_cat
+        assert "vegetasi aktif" in mid_desc
+
+        high_cat, _, high_desc = get_frp_explanation(250.0)
+        assert "High" in high_cat
+        assert "skala besar" in high_desc
+
+        ext_cat, _, ext_desc = get_frp_explanation(650.0)
+        assert "Extreme" in ext_cat
+        assert "crown fires" in ext_desc
+
