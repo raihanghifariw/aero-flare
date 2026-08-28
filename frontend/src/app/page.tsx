@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [dangerFilter, setDangerFilter] = useState<number | null>(null);
   const [classFilter, setClassFilter] = useState<Set<Classification>>(new Set());
-  const [timeRange, setTimeRange] = useState<TimeRangeHours>(24);
+  const [timeRange, setTimeRange] = useState<TimeRangeHours>(48);
 
   // Compute date_from from selected time range
   const dateFrom = useMemo(
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     mutate: refetchEvents,
   } = useFireEvents({
     page,
-    limit: 100,
+    limit: 300,
     date_from: dateFrom,
     ...(dangerFilter !== null && { danger_level: dangerFilter }),
     ...(classParam && { classification: classParam }),

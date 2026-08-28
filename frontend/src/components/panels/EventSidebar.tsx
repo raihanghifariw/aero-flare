@@ -210,7 +210,9 @@ export function EventSidebar({
                         )}
                       </>
                     ) : (
-                      <span className="text-[10px] text-gray-400 italic">Pending analysis</span>
+                      <span className="rounded bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium">
+                        ⏳ Pending Triage
+                      </span>
                     )}
                   </div>
                   <p className="text-xs text-gray-600 truncate">

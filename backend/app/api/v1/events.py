@@ -37,7 +37,7 @@ logger = structlog.get_logger()
 async def list_events(
     request: Request,  # required by slowapi
     page: int = Query(1, ge=1, le=10_000, description="Page number"),
-    limit: int = Query(50, ge=1, le=200, description="Items per page"),
+    limit: int = Query(50, ge=1, le=1_000, description="Items per page"),
     status: str | None = Query(None, description="Filter by status"),
     date_from: datetime | None = Query(None, description="Filter events after this datetime"),
     date_to: datetime | None = Query(None, description="Filter events before this datetime"),
@@ -68,40 +68,66 @@ async def list_events(
         result = await db.execute(stmt.limit(limit).offset(offset))
         events = result.scalars().all()
     elif not status and page == 1:
-        # Stratified sampling for initial unfiltered dashboard page 1:
-        # Guarantees representation of ALERTED events, Level 1 (False Positives), and general events
-        # 1. Up to 50 ALERTED events
-        stmt_alerted = select(FireEvent).where(FireEvent.status == "ALERTED").order_by(FireEvent.detected_at.desc()).limit(50)
-        alerted_events = (await db.execute(stmt_alerted)).scalars().all()
-        alerted_ids = set(e.id for e in alerted_events)
+        # Nationwide balanced regional sampling for initial unfiltered dashboard:
+        # Guarantees representation across all major Indonesian regions (Sumatra, Kalimantan/Java, Sulawesi/Maluku, Papua)
+        from sqlalchemy import and_, case
 
-        # 2. Up to 15 Level 1 / FALSE_POSITIVE events
-        subq_l1 = select(TriageReport.event_id).where(
-            (TriageReport.danger_level == 1) | (TriageReport.classification == "FALSE_POSITIVE")
-        )
-        stmt_l1 = select(FireEvent).where(FireEvent.id.in_(subq_l1)).order_by(FireEvent.detected_at.desc()).limit(15)
-        l1_events = (await db.execute(stmt_l1)).scalars().all()
-        l1_ids = set(e.id for e in l1_events)
+        sectors = [
+            FireEvent.lon < 109,                               # Sumatra & West
+            and_(FireEvent.lon >= 109, FireEvent.lon < 119),   # Kalimantan & Java
+            and_(FireEvent.lon >= 119, FireEvent.lon < 130),   # Sulawesi & Maluku & Nusa
+            FireEvent.lon >= 130,                              # Papua & East
+        ]
 
-        # 3. Remaining recent events up to limit
-        exclude_ids = alerted_ids | l1_ids
-        rem_limit = max(0, limit - len(alerted_events) - len(l1_events))
-        stmt_rest = select(FireEvent)
-        if exclude_ids:
-            stmt_rest = stmt_rest.where(FireEvent.id.notin_(exclude_ids))
-        if date_from:
-            stmt_rest = stmt_rest.where(FireEvent.detected_at >= date_from)
-        if date_to:
-            stmt_rest = stmt_rest.where(FireEvent.detected_at <= date_to)
-        stmt_rest = stmt_rest.order_by(FireEvent.detected_at.desc()).limit(rem_limit)
-        rest_events = (await db.execute(stmt_rest)).scalars().all()
+        per_sector = max(1, limit // len(sectors))
+        sampled_events = []
+        seen_ids = set()
 
-        events = alerted_events + l1_events + rest_events
+        for sector_cond in sectors:
+            stmt_sector = select(FireEvent).where(sector_cond)
+            if date_from:
+                stmt_sector = stmt_sector.where(FireEvent.detected_at >= date_from)
+            if date_to:
+                stmt_sector = stmt_sector.where(FireEvent.detected_at <= date_to)
 
-        # Total count query
+            stmt_sector = stmt_sector.order_by(
+                case((FireEvent.status == "ALERTED", 0), else_=1),
+                FireEvent.detected_at.desc(),
+            ).limit(per_sector)
+
+            res_sector = await db.execute(stmt_sector)
+            for e in res_sector.scalars().all():
+                if e.id not in seen_ids:
+                    seen_ids.add(e.id)
+                    sampled_events.append(e)
+
+        # Backfill with remaining recent events if under limit
+        if len(sampled_events) < limit:
+            rem_needed = limit - len(sampled_events)
+            stmt_backfill = select(FireEvent)
+            if seen_ids:
+                stmt_backfill = stmt_backfill.where(FireEvent.id.notin_(seen_ids))
+            if date_from:
+                stmt_backfill = stmt_backfill.where(FireEvent.detected_at >= date_from)
+            if date_to:
+                stmt_backfill = stmt_backfill.where(FireEvent.detected_at <= date_to)
+            stmt_backfill = stmt_backfill.order_by(FireEvent.detected_at.desc()).limit(rem_needed)
+            res_backfill = await db.execute(stmt_backfill)
+            for e in res_backfill.scalars().all():
+                if e.id not in seen_ids:
+                    seen_ids.add(e.id)
+                    sampled_events.append(e)
+
+        # Sort combined nationwide sample chronologically (latest first) and truncate to limit
+        sampled_events.sort(key=lambda x: x.detected_at, reverse=True)
+        events = sampled_events[:limit]
+
+        # Total count query within date range
         count_stmt = select(func.count(FireEvent.id))
         if date_from:
             count_stmt = count_stmt.where(FireEvent.detected_at >= date_from)
+        if date_to:
+            count_stmt = count_stmt.where(FireEvent.detected_at <= date_to)
         total = (await db.execute(count_stmt)).scalar_one()
     else:
         # Regular fallback pagination

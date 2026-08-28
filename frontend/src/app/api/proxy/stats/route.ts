@@ -36,14 +36,14 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     const { backendUrl } = getBackendConfig();
     const headers = getBackendHeaders();
 
-    // Rolling 24h window (matching default dashboard range)
+    // Active 48h window (matching default dashboard range)
     const now = new Date();
-    const rolling24hStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const active48hStart = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
     const nowIso = now.toISOString();
 
     const [summaryRes, healthRes, eventsRes] = await Promise.all([
       fetch(
-        `${backendUrl}/api/v1/stats/summary?date_from=${encodeURIComponent(rolling24hStart)}&date_to=${encodeURIComponent(nowIso)}`,
+        `${backendUrl}/api/v1/stats/summary?date_from=${encodeURIComponent(active48hStart)}&date_to=${encodeURIComponent(nowIso)}`,
         { headers, cache: 'no-store' },
       ).catch(() => null),
       fetch(`${backendUrl}/api/v1/health`, { cache: 'no-store' }).catch(() => null),

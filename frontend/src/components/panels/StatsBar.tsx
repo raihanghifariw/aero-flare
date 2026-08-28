@@ -23,7 +23,7 @@ export function StatsBar({ stats, isLoading = false }: StatsBarProps) {
   return (
     <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5 text-sm overflow-x-auto">
       <Stat
-        label="Events (24h)"
+        label="Events (48h)"
         value={isLoading ? '…' : String(stats?.events_today ?? 0)}
       />
       <div className="hidden h-7 w-px bg-slate-200 shrink-0 sm:block" />
