@@ -4,7 +4,7 @@ GET /api/v1/stats/summary — aggregate fire event statistics by date range
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, Query
@@ -51,51 +51,60 @@ async def get_stats_summary(
     db: AsyncSession = Depends(get_db),
 ) -> StatsSummary:
     """Aggregate statistics for fire events over a given date range."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     _from = date_from or (now - timedelta(days=7))
     _to = date_to or now
 
-    # Base filter
+    if _from.tzinfo is None:
+        _from = _from.replace(tzinfo=timezone.utc)
+    if _to.tzinfo is None:
+        _to = _to.replace(tzinfo=timezone.utc)
+
+    # Base filter for events
     base = select(FireEvent).where(
         FireEvent.detected_at >= _from,
         FireEvent.detected_at <= _to,
     )
 
-    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+    total = (await db.execute(select(func.count(FireEvent.id)).select_from(base.subquery()))).scalar_one()
     alerted = (await db.execute(
-        select(func.count()).select_from(
+        select(func.count(FireEvent.id)).select_from(
             base.where(FireEvent.alerted_at.is_not(None)).subquery()
         )
     )).scalar_one()
 
-    def _triage_count(classification: str) -> select:  # type: ignore[return]
-        return select(func.count()).select_from(
-            select(TriageReport).join(
-                FireEvent, TriageReport.event_id == FireEvent.id
-            ).where(
+    async def _count_by_classification(classification: str) -> int:
+        stmt = (
+            select(func.count(func.distinct(TriageReport.event_id)))
+            .select_from(TriageReport)
+            .join(FireEvent, TriageReport.event_id == FireEvent.id)
+            .where(
                 FireEvent.detected_at >= _from,
                 FireEvent.detected_at <= _to,
                 TriageReport.classification == classification,
-            ).subquery()
+            )
         )
+        return (await db.execute(stmt)).scalar_one()
 
-    def _source_count(source: str) -> select:  # type: ignore[return]
-        return select(func.count()).select_from(
-            select(TriageReport).join(
-                FireEvent, TriageReport.event_id == FireEvent.id
-            ).where(
+    async def _count_by_source(source: str) -> int:
+        stmt = (
+            select(func.count(func.distinct(TriageReport.event_id)))
+            .select_from(TriageReport)
+            .join(FireEvent, TriageReport.event_id == FireEvent.id)
+            .where(
                 FireEvent.detected_at >= _from,
                 FireEvent.detected_at <= _to,
                 TriageReport.triage_source == source,
-            ).subquery()
+            )
         )
+        return (await db.execute(stmt)).scalar_one()
 
-    confirmed = (await db.execute(_triage_count("CONFIRMED_FIRE"))).scalar_one()
-    probable = (await db.execute(_triage_count("PROBABLE_FIRE"))).scalar_one()
-    fp = (await db.execute(_triage_count("FALSE_POSITIVE"))).scalar_one()
-    industrial = (await db.execute(_triage_count("INDUSTRIAL_SOURCE"))).scalar_one()
-    vlm_count = (await db.execute(_source_count("VLM"))).scalar_one()
-    rule_count = (await db.execute(_source_count("RULE_BASED_FALLBACK"))).scalar_one()
+    confirmed = await _count_by_classification("CONFIRMED_FIRE")
+    probable = await _count_by_classification("PROBABLE_FIRE")
+    fp = await _count_by_classification("FALSE_POSITIVE")
+    industrial = await _count_by_classification("INDUSTRIAL_SOURCE")
+    vlm_count = await _count_by_source("VLM")
+    rule_count = await _count_by_source("RULE_BASED_FALLBACK")
 
     return StatsSummary(
         total_events=total,

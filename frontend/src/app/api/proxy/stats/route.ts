@@ -36,19 +36,14 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     const { backendUrl } = getBackendConfig();
     const headers = getBackendHeaders();
 
-    // Today (UTC midnight → now)
+    // Rolling 24h window (matching default dashboard range)
     const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    ).toISOString();
-
-    const todayEnd = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999),
-    ).toISOString();
+    const rolling24hStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const nowIso = now.toISOString();
 
     const [summaryRes, healthRes, eventsRes] = await Promise.all([
       fetch(
-        `${backendUrl}/api/v1/stats/summary?date_from=${encodeURIComponent(todayStart)}&date_to=${encodeURIComponent(todayEnd)}`,
+        `${backendUrl}/api/v1/stats/summary?date_from=${encodeURIComponent(rolling24hStart)}&date_to=${encodeURIComponent(nowIso)}`,
         { headers, cache: 'no-store' },
       ).catch(() => null),
       fetch(`${backendUrl}/api/v1/health`, { cache: 'no-store' }).catch(() => null),
@@ -58,7 +53,26 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       }).catch(() => null),
     ]);
 
-    if (!summaryRes || !summaryRes.ok) {
+    let summary: BackendStatsSummary | null = null;
+    if (summaryRes && summaryRes.ok) {
+      summary = (await summaryRes.json()) as BackendStatsSummary;
+    }
+
+    // Fallback: If 0 events in the last 24h, check 7-day range so historical/demo data is reflected
+    if (!summary || summary.total_events === 0) {
+      const fallbackRes = await fetch(`${backendUrl}/api/v1/stats/summary`, {
+        headers,
+        cache: 'no-store',
+      }).catch(() => null);
+      if (fallbackRes && fallbackRes.ok) {
+        const fallbackSummary = (await fallbackRes.json()) as BackendStatsSummary;
+        if (fallbackSummary.total_events > 0) {
+          summary = fallbackSummary;
+        }
+      }
+    }
+
+    if (!summary) {
       const errText = summaryRes ? await summaryRes.text().catch(() => '') : 'Backend unreachable';
       let errData: unknown;
       try {
@@ -68,8 +82,6 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       }
       return NextResponse.json(errData, { status: summaryRes?.status ?? 502 });
     }
-
-    const summary = (await summaryRes.json()) as BackendStatsSummary;
 
     let pipelineHealthy = false;
     if (healthRes && healthRes.ok) {
