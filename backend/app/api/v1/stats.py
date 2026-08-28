@@ -60,16 +60,18 @@ async def get_stats_summary(
     if _to.tzinfo is None:
         _to = _to.replace(tzinfo=timezone.utc)
 
-    # Base filter for events
-    base = select(FireEvent).where(
-        FireEvent.detected_at >= _from,
-        FireEvent.detected_at <= _to,
-    )
+    total = (await db.execute(
+        select(func.count(FireEvent.id)).where(
+            FireEvent.detected_at >= _from,
+            FireEvent.detected_at <= _to,
+        )
+    )).scalar_one()
 
-    total = (await db.execute(select(func.count(FireEvent.id)).select_from(base.subquery()))).scalar_one()
     alerted = (await db.execute(
-        select(func.count(FireEvent.id)).select_from(
-            base.where(FireEvent.alerted_at.is_not(None)).subquery()
+        select(func.count(FireEvent.id)).where(
+            FireEvent.detected_at >= _from,
+            FireEvent.detected_at <= _to,
+            FireEvent.alerted_at.is_not(None),
         )
     )).scalar_one()
 

@@ -72,6 +72,22 @@ async def list_events(
         # Guarantees representation across all major Indonesian regions (Sumatra, Kalimantan/Java, Sulawesi/Maluku, Papua)
         from sqlalchemy import and_, case
 
+        # 1. Guarantee representation of FALSE_POSITIVE / Level 1 events
+        fp_subq = select(TriageReport.event_id).where(
+            (TriageReport.classification == "FALSE_POSITIVE") | (TriageReport.danger_level == 1)
+        )
+        stmt_fp = select(FireEvent).where(FireEvent.id.in_(fp_subq))
+        if date_from:
+            stmt_fp = stmt_fp.where(FireEvent.detected_at >= date_from)
+        if date_to:
+            stmt_fp = stmt_fp.where(FireEvent.detected_at <= date_to)
+        stmt_fp = stmt_fp.order_by(FireEvent.detected_at.desc()).limit(15)
+        fp_events = (await db.execute(stmt_fp)).scalars().all()
+
+        sampled_events = list(fp_events)
+        seen_ids = set(e.id for e in fp_events)
+
+        # 2. Nationwide balanced regional sampling for remaining slots
         sectors = [
             FireEvent.lon < 109,                               # Sumatra & West
             and_(FireEvent.lon >= 109, FireEvent.lon < 119),   # Kalimantan & Java
@@ -79,12 +95,13 @@ async def list_events(
             FireEvent.lon >= 130,                              # Papua & East
         ]
 
-        per_sector = max(1, limit // len(sectors))
-        sampled_events = []
-        seen_ids = set()
+        rem_limit = max(0, limit - len(sampled_events))
+        per_sector = max(1, rem_limit // len(sectors))
 
         for sector_cond in sectors:
             stmt_sector = select(FireEvent).where(sector_cond)
+            if seen_ids:
+                stmt_sector = stmt_sector.where(FireEvent.id.notin_(seen_ids))
             if date_from:
                 stmt_sector = stmt_sector.where(FireEvent.detected_at >= date_from)
             if date_to:

@@ -187,3 +187,71 @@ async def test_get_event_by_nonexistent_uuid_returns_404(client: AsyncClient) ->
     # Error body must include trace_id (NFR-08)
     detail = data.get("detail", {})
     assert "trace_id" in detail or "trace_id" in str(detail)
+
+
+# ─── Stats and Triage Filter Integration Tests ──────────────────────────────
+
+@pytest.mark.asyncio
+async def test_stats_summary_endpoint(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /api/v1/stats/summary returns aggregated counts."""
+    from app.models.triage_report import TriageReport
+
+    event = _make_event(status="ALERTED", alerted_at=datetime.now(timezone.utc))
+    db_session.add(event)
+    await db_session.flush()
+
+    tr = TriageReport(
+        id=uuid.uuid4(),
+        event_id=event.id,
+        classification="CONFIRMED_FIRE",
+        danger_level=5,
+        confidence=0.95,
+        triage_source="VLM",
+        summary="Visible active fire",
+        recommended_action="DISPATCH_WATER_BOMBING",
+        processed_at=datetime.now(timezone.utc),
+    )
+    db_session.add(tr)
+    await db_session.flush()
+
+    response = await client.get("/api/v1/stats/summary")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_events"] >= 1
+    assert data["confirmed_fires"] >= 1
+    assert data["alerted_count"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_get_events_with_classification_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Filter events by classification."""
+    from app.models.triage_report import TriageReport
+
+    event = _make_event()
+    db_session.add(event)
+    await db_session.flush()
+
+    tr = TriageReport(
+        id=uuid.uuid4(),
+        event_id=event.id,
+        classification="FALSE_POSITIVE",
+        danger_level=1,
+        confidence=0.88,
+        triage_source="RULE_BASED_FALLBACK",
+        summary="Reflective cloud",
+        recommended_action="NO_ACTION",
+        processed_at=datetime.now(timezone.utc),
+    )
+    db_session.add(tr)
+    await db_session.flush()
+
+    response = await client.get("/api/v1/events?classification=FALSE_POSITIVE")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 1
+    assert data["data"][0]["triage"]["classification"] == "FALSE_POSITIVE"
+
