@@ -19,10 +19,12 @@ jobs:
           cache-dependency-path: 'backend/requirements.txt'
 
       - name: Install dependencies
-        run: pip install httpx python-dotenv structlog
+        run: pip install -r backend/requirements.txt
 
       - name: Retry failed alerts
         env:
+          PYTHONPATH: backend
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
           BACKEND_API_KEY: ${{ secrets.BACKEND_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

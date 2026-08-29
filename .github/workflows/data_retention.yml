@@ -23,6 +23,7 @@ jobs:
 
       - name: Run data retention
         env:
+          PYTHONPATH: backend
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CLOUDFLARE_R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
           CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
