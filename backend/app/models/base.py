@@ -31,7 +31,7 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 def _make_engine() -> AsyncEngine:
     """Build and return a fresh AsyncEngine from current settings."""
     settings = get_settings()
-    url = settings.DATABASE_URL
+    url = settings.DATABASE_URL.strip().strip("'\"")
     is_sqlite = url.startswith("sqlite")
 
     kwargs: dict = {

@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     # --- Open-Meteo ---
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1/"
 
+    @field_validator("DATABASE_URL", "FIRMS_API_KEY", "OLLAMA_BASE_URL", "API_KEY", "SECRET_KEY", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip().strip("'\"")
+        return v
+
     @field_validator("ENVIRONMENT")
     @classmethod
     def validate_environment(cls, v: str) -> str:
