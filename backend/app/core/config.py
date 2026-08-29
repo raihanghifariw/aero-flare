@@ -29,27 +29,27 @@ class Settings(BaseSettings):
 
     # --- Application ---
     ENVIRONMENT: str = "development"
-    API_KEY: str
-    SECRET_KEY: str
+    API_KEY: str = ""
+    SECRET_KEY: str = ""
 
     # --- Database ---
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
     SQLALCHEMY_POOL_SIZE: int = 5
     SQLALCHEMY_MAX_OVERFLOW: int = 10
 
     # --- Supabase ---
-    SUPABASE_URL: str
-    SUPABASE_SERVICE_KEY: str
-    SUPABASE_ANON_KEY: str
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+    SUPABASE_ANON_KEY: str = ""
 
     # --- Cloudflare R2 ---
-    CLOUDFLARE_R2_ACCOUNT_ID: str
-    CLOUDFLARE_R2_ACCESS_KEY: str
-    CLOUDFLARE_R2_SECRET: str
+    CLOUDFLARE_R2_ACCOUNT_ID: str = ""
+    CLOUDFLARE_R2_ACCESS_KEY: str = ""
+    CLOUDFLARE_R2_SECRET: str = ""
     CLOUDFLARE_R2_BUCKET_NAME: str = "aero-flare-tiles"
 
     # --- NASA FIRMS ---
-    FIRMS_API_KEY: str
+    FIRMS_API_KEY: str = ""
 
     # --- Ollama ---
     OLLAMA_BASE_URL: str = "http://localhost:11434"
@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     XGBOOST_MODEL_PATH: str = "ml/models/xgboost_spread_v1.0.0.ubj"
 
     # --- Telegram ---
-    TELEGRAM_BOT_TOKEN: str
-    TELEGRAM_CHANNEL_ID: str
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHANNEL_ID: str = ""
 
     # --- Grafana / OpenTelemetry ---
     GRAFANA_OTLP_ENDPOINT: str = ""

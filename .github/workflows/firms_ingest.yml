@@ -53,6 +53,11 @@ jobs:
       - name: Run FIRMS ingestion + triage
         env:
           PYTHONPATH: backend
+          API_KEY: ${{ secrets.API_KEY || secrets.BACKEND_API_KEY }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           FIRMS_API_KEY: ${{ secrets.FIRMS_API_KEY }}
           BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
           BACKEND_API_KEY: ${{ secrets.BACKEND_API_KEY }}
