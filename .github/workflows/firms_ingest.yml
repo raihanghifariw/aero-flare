@@ -45,6 +45,11 @@ jobs:
             fi
           fi
 
+      - name: Train XGBoost Model Artifact
+        env:
+          PYTHONPATH: .
+        run: python ml/train.py --version 1.0.0
+
       - name: Run FIRMS ingestion + triage
         env:
           PYTHONPATH: backend
