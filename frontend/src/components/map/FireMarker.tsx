@@ -131,12 +131,13 @@ export function FireMarker({ event, triage, isSelected = false, onSelect }: Fire
 
             <Link
               href={`/events/${event.id}`}
-              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-brand-dark"
+              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-orange-600"
             >
-              <span>Inspect Full Incident Dossier</span>
+              <span>Inspect Incident Telemetry</span>
               <ExternalLink size={12} aria-hidden="true" />
             </Link>
           </div>
+
         </Popup>
       </CircleMarker>
     </>
