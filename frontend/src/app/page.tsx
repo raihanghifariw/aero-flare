@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { ChevronDown, ChevronUp, List } from 'lucide-react';
 import useSWR from 'swr';
 import { useFireEvents } from '@/hooks/useFireEvents';
 import { useTriageMap } from '@/hooks/useTriageMap';
@@ -21,8 +22,8 @@ const FireMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full items-center justify-center bg-gray-100">
-        <LoadingSpinner size="lg" label="Loading map…" />
+      <div className="flex h-full items-center justify-center bg-surface">
+        <LoadingSpinner size="lg" label="Initializing cartography…" showText />
       </div>
     ),
   }
@@ -30,11 +31,12 @@ const FireMap = dynamic(
 
 // Time range options (hours)
 const TIME_RANGE_OPTIONS = [
-  { label: '24h', hours: 24 },
-  { label: '48h', hours: 48 },
-  { label: '7d', hours: 168 },
+  { label: '1D', hours: 24 },
+  { label: '2D', hours: 48 },
+  { label: '7D', hours: 168 },
 ] as const;
 type TimeRangeHours = 24 | 48 | 168;
+
 
 export default function DashboardPage() {
   const [page, setPage] = useState(1);
@@ -42,6 +44,7 @@ export default function DashboardPage() {
   const [dangerFilter, setDangerFilter] = useState<number | null>(null);
   const [classFilter, setClassFilter] = useState<Set<Classification>>(new Set());
   const [timeRange, setTimeRange] = useState<TimeRangeHours>(48);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
 
   // Compute date_from from selected time range
   const dateFrom = useMemo(
@@ -57,7 +60,7 @@ export default function DashboardPage() {
     return undefined;
   }, [classFilter]);
 
-  // Fire events (polled every 5 min) — scoped to selected time range & active filters
+  // Fire events (polled every 5 min)
   const {
     data: eventsData,
     isLoading: eventsLoading,
@@ -81,8 +84,7 @@ export default function DashboardPage() {
   const events: FireEvent[] = useMemo(() => eventsData?.data ?? [], [eventsData?.data]);
   const hasMore = eventsData ? eventsData.total > eventsData.page * eventsData.limit : false;
 
-  // Batch-fetch triage data for all loaded events so the sidebar can show
-  // classification + danger badges without waiting for modal open.
+  // Batch-fetch triage data for all loaded events
   const triageMap = useTriageMap(events);
 
   const visibleEvents = useMemo(() => events.filter((event) => {
@@ -95,45 +97,59 @@ export default function DashboardPage() {
   const selectedEvent = events.find((e) => e.id === selectedEventId) ?? null;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-surface">
       <StatsBar stats={stats} isLoading={statsLoading} />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Map — takes 70% on desktop, full width on mobile */}
+        {/* Modern Map Container — 70% desktop */}
         <div
           className="relative flex-1 md:flex-[7]"
           data-testid="fire-map-container"
         >
-          <div className="pointer-events-none absolute left-4 top-4 z-10 hidden rounded-lg border border-white/70 bg-slate-950/85 px-3 py-2 text-white shadow-lg backdrop-blur-sm sm:block">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">Live detection map</p>
-            <p className="mt-0.5 text-xs text-slate-300">Indonesia · NASA FIRMS</p>
+          {/* Top-Left Telemetry Badge */}
+          <div className="pointer-events-none absolute left-4 top-4 z-[400] hidden rounded-2xl border border-edge bg-white/95 px-4 py-2.5 shadow-md backdrop-blur sm:block">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+              <p className="text-[11px] font-bold uppercase tracking-wider text-brand">
+                Live Cartography
+              </p>
+            </div>
+            <p className="mt-0.5 text-xs font-semibold text-slate-700">
+              Indonesia · {visibleEvents.length} Active Hotspots
+            </p>
           </div>
 
-          {/* Time range selector */}
-          <div className="pointer-events-auto absolute right-4 top-4 z-10 hidden sm:flex items-center gap-1 rounded-lg border border-white/70 bg-slate-950/85 px-2 py-1.5 shadow-lg backdrop-blur-sm">
-            <span className="text-[10px] text-slate-400 mr-1">Range:</span>
+          {/* Top-Right Time Range Selector */}
+          <div className="pointer-events-auto absolute right-4 top-4 z-[400] hidden items-center gap-1 rounded-full border border-edge bg-white/95 p-1 shadow-md backdrop-blur sm:flex">
+            <span className="px-2 text-[10px] font-bold text-slate-400">RANGE</span>
             {TIME_RANGE_OPTIONS.map(({ label, hours }) => (
               <button
                 key={hours}
+                aria-pressed={timeRange === hours}
                 onClick={() => { setTimeRange(hours as TimeRangeHours); setPage(1); }}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                className={`rounded-full px-3 py-1 text-xs font-bold transition-all ${
                   timeRange === hours
-                    ? 'bg-orange-500 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-white/10'
+                    ? 'bg-brand text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-ink'
                 }`}
               >
                 {label}
               </button>
             ))}
           </div>
+
+          {/* Network Interruption Alert */}
           {eventsError && (
-            <div className="absolute top-3 left-3 right-3 z-10">
+            <div className="absolute left-4 right-4 top-4 z-[400]">
               <ErrorAlert
-                message="Failed to load fire events. Map may be incomplete."
-                onRetry={() => refetchEvents()}
+                message="Telemetry ingestion feed interrupted. Backend service unreachable or offline."
+                onRetry={() => {
+                  refetchEvents();
+                }}
               />
             </div>
           )}
+
 
           <FireMap
             events={visibleEvents}
@@ -143,11 +159,11 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Sidebar — 30% on desktop, hidden on mobile (event list swipes up) */}
+        {/* Sidebar Panel — 30% desktop */}
         <div
           className={`
             hidden md:flex md:flex-[3] md:max-w-xs lg:max-w-sm
-            border-l border-gray-200
+            border-l border-edge bg-surface-raised shadow-sm
           `}
         >
           <EventSidebar
@@ -166,28 +182,44 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Mobile: bottom drawer event list toggle */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30">
-          {/* Simplified mobile list — full sidebar is available on tablet+ */}
-          <div className="max-h-48 overflow-y-auto bg-white border-t border-gray-200 shadow-lg">
-            <EventSidebar
-              events={events}
-              triageMap={triageMap}
-              isLoading={eventsLoading}
-              error={eventsError ?? null}
-              selectedEventId={selectedEventId}
-              onEventSelect={setSelectedEventId}
-              dangerFilter={dangerFilter}
-              onDangerFilterChange={setDangerFilter}
-              classFilter={classFilter}
-              onClassFilterChange={setClassFilter}
-            />
-          </div>
+        {/* Mobile collapsible incident drawer */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden">
+          {mobileListOpen && (
+            <div className="max-h-64 overflow-hidden border-t border-edge bg-surface-raised shadow-xl">
+              <div className="max-h-64 overflow-y-auto">
+                <EventSidebar
+                  events={events}
+                  triageMap={triageMap}
+                  isLoading={eventsLoading}
+                  error={eventsError ?? null}
+                  selectedEventId={selectedEventId}
+                  onEventSelect={setSelectedEventId}
+                  dangerFilter={dangerFilter}
+                  onDangerFilterChange={setDangerFilter}
+                  classFilter={classFilter}
+                  onClassFilterChange={setClassFilter}
+                  compact
+                />
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setMobileListOpen((open) => !open)}
+            aria-expanded={mobileListOpen}
+            className="flex w-full items-center justify-center gap-2 border-t border-edge bg-white/95 py-3 text-xs font-bold uppercase tracking-wider text-ink backdrop-blur shadow-xl"
+          >
+            <List size={14} className="text-brand" aria-hidden="true" />
+            <span>{mobileListOpen ? 'Hide Incident Feed' : `View Incident Feed (${events.length})`}</span>
+            {mobileListOpen
+              ? <ChevronDown size={14} aria-hidden="true" />
+              : <ChevronUp size={14} aria-hidden="true" />}
+          </button>
         </div>
       </div>
 
-      {/* Triage Modal (opens when event selected) */}
+      {/* Triage Inspector Modal / Drawer */}
       <TriageModal event={selectedEvent} onClose={() => setSelectedEventId(null)} />
     </div>
   );
 }
+

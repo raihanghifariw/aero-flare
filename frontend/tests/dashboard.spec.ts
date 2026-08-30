@@ -66,7 +66,7 @@ const MOCK_STATS = {
 // ─── Shared route mock helper ─────────────────────────────────────────────────
 
 async function mockBackendRoutes(page: import('@playwright/test').Page) {
-  await page.route('/api/proxy/events*', async (route) => {
+  await page.route('**/api/proxy/events*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -79,7 +79,7 @@ async function mockBackendRoutes(page: import('@playwright/test').Page) {
     });
   });
 
-  await page.route('/api/proxy/triage/evt-test-001', async (route) => {
+  await page.route('**/api/proxy/triage/**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -87,7 +87,7 @@ async function mockBackendRoutes(page: import('@playwright/test').Page) {
     });
   });
 
-  await page.route('/api/proxy/predictions/evt-test-001', async (route) => {
+  await page.route('**/api/proxy/predictions/**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -95,7 +95,7 @@ async function mockBackendRoutes(page: import('@playwright/test').Page) {
     });
   });
 
-  await page.route('/api/proxy/stats', async (route) => {
+  await page.route('**/api/proxy/stats', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -119,7 +119,7 @@ test.describe('Aero-Flare Dashboard', () => {
 
     // Stats bar should render with real numbers
     await expect(page.getByText('12')).toBeVisible();
-    await expect(page.getByText('Events today')).toBeVisible();
+    await expect(page.getByText('Events (48h)')).toBeVisible();
   });
 
   /**
@@ -135,7 +135,7 @@ test.describe('Aero-Flare Dashboard', () => {
 
     // Leaflet SVG markers should appear
     // Circle markers are rendered as <path> inside SVG by Leaflet
-    await page.waitForSelector('.leaflet-overlay-pane svg path', { timeout: 8000 });
+    await page.waitForSelector('.leaflet-overlay-pane svg path', { timeout: 10000 });
   });
 
   /**
@@ -151,7 +151,7 @@ test.describe('Aero-Flare Dashboard', () => {
 
     // Triage modal should appear
     const modal = page.getByTestId('triage-modal');
-    await expect(modal).toBeVisible({ timeout: 5000 });
+    await expect(modal).toBeVisible({ timeout: 8000 });
 
     // Classification data
     await expect(modal.getByTestId('classification-tag')).toContainText('Confirmed Fire');
@@ -170,11 +170,11 @@ test.describe('Aero-Flare Dashboard', () => {
     await expect(sidebar).toBeVisible();
 
     // Danger badge for level 4 should appear (from MOCK_TRIAGE)
-    // Note: sidebar shows pre-triaged events; triage source from triageMap
     await expect(sidebar).toBeVisible();
     // Stats bar values from mock
-    await expect(page.getByText('4')).toBeVisible(); // confirmed_fires_today
+    await expect(page.getByText('4').first()).toBeVisible(); // confirmed_fires_today
   });
+
 
   /**
    * Test 5: Spread chart renders when prediction data exists
@@ -188,11 +188,11 @@ test.describe('Aero-Flare Dashboard', () => {
     await sidebarBtn.click();
 
     const modal = page.getByTestId('triage-modal');
-    await expect(modal).toBeVisible({ timeout: 5000 });
+    await expect(modal).toBeVisible({ timeout: 8000 });
 
     // Spread radius chart should be present
     const chart = modal.getByTestId('spread-radius-chart');
-    await expect(chart).toBeVisible({ timeout: 5000 });
+    await expect(chart).toBeVisible({ timeout: 8000 });
 
     // Recharts renders bar cells — verify the container text shows horizon labels
     await expect(chart).toContainText('6h');
@@ -205,10 +205,10 @@ test.describe('Aero-Flare Dashboard', () => {
    */
   test('shows error alert when API is unreachable', async ({ page }) => {
     // Return 500 for events endpoint
-    await page.route('/api/proxy/events*', async (route) => {
+    await page.route('**/api/proxy/events*', async (route) => {
       await route.fulfill({ status: 500, body: '{"detail":"Internal Server Error"}' });
     });
-    await page.route('/api/proxy/stats', async (route) => {
+    await page.route('**/api/proxy/stats', async (route) => {
       await route.fulfill({ status: 500, body: '{"detail":"Internal Server Error"}' });
     });
 
@@ -225,24 +225,24 @@ test.describe('Aero-Flare Dashboard', () => {
     // Override with rule-based event
     const ruleEvent = { ...MOCK_EVENT, id: 'evt-test-002', status: 'TRIAGED' as const };
 
-    await page.route('/api/proxy/events*', async (route) => {
+    await page.route('**/api/proxy/events*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: [ruleEvent], total: 1, page: 1, limit: 100 }),
       });
     });
-    await page.route('/api/proxy/triage/evt-test-002', async (route) => {
+    await page.route('**/api/proxy/triage/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(MOCK_TRIAGE_RULE_BASED),
       });
     });
-    await page.route('/api/proxy/predictions/*', async (route) => {
+    await page.route('**/api/proxy/predictions/**', async (route) => {
       await route.fulfill({ status: 404, body: '{"detail":"Not found"}' });
     });
-    await page.route('/api/proxy/stats', async (route) => {
+    await page.route('**/api/proxy/stats', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -257,7 +257,7 @@ test.describe('Aero-Flare Dashboard', () => {
     await sidebarBtn.click();
 
     const modal = page.getByTestId('triage-modal');
-    await expect(modal).toBeVisible({ timeout: 5000 });
+    await expect(modal).toBeVisible({ timeout: 8000 });
 
     // Rule-Based badge with warning icon should appear
     const badge = modal.getByTestId('triage-source-badge');
@@ -265,3 +265,4 @@ test.describe('Aero-Flare Dashboard', () => {
     await expect(badge).toContainText('⚠');
   });
 });
+

@@ -1,30 +1,34 @@
+import { AlertOctagon, RotateCw } from 'lucide-react';
+
 export interface ErrorAlertProps {
   message: string;
   onRetry?: () => void;
 }
 
 /**
- * Error banner displayed when an API request fails.
+ * Modern error banner displayed when an API or telemetry request fails.
  */
 export function ErrorAlert({ message, onRetry }: ErrorAlertProps) {
   return (
     <div
       data-testid="error-alert"
       role="alert"
-      className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800"
+      className="flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm backdrop-blur"
     >
-      <span className="mt-0.5 text-base leading-none" aria-hidden="true">
-        ⚠
-      </span>
-      <span className="flex-1">{message}</span>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <AlertOctagon size={18} className="shrink-0 text-red-500" aria-hidden="true" />
+        <span className="truncate font-medium text-red-800">{message}</span>
+      </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="ml-2 font-medium underline hover:no-underline focus:outline-none"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-50"
         >
-          Retry
+          <RotateCw size={12} aria-hidden="true" />
+          <span>Retry</span>
         </button>
       )}
     </div>
   );
 }
+

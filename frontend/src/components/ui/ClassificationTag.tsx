@@ -6,22 +6,32 @@ export interface ClassificationTagProps {
   classification: Classification;
 }
 
+const DOT_COLORS: Record<Classification, string> = {
+  CONFIRMED_FIRE: 'bg-red-500',
+  PROBABLE_FIRE: 'bg-orange-500',
+  FALSE_POSITIVE: 'bg-emerald-500',
+  INDUSTRIAL_SOURCE: 'bg-sky-500',
+};
+
 /**
- * Colored pill tag representing a fire classification result.
+ * Modern SaaS badge representing a fire classification result.
  */
 export function ClassificationTag({ classification }: ClassificationTagProps) {
-  const classes = CLASSIFICATION_CLASSES[classification] ?? 'bg-gray-100 text-gray-700 border-gray-300';
+  const classes = CLASSIFICATION_CLASSES[classification] ?? 'bg-slate-50 text-slate-700 border-slate-200';
   const label = CLASSIFICATION_LABELS[classification] ?? classification;
+  const dotColor = DOT_COLORS[classification] ?? 'bg-slate-400';
 
   return (
     <span
       data-testid="classification-tag"
       className={clsx(
-        'inline-block px-2 py-0.5 rounded-full border text-xs font-medium',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-tight shadow-sm',
         classes
       )}
     >
-      {label}
+      <span className={clsx('h-1.5 w-1.5 rounded-full', dotColor)} aria-hidden="true" />
+      <span>{label}</span>
     </span>
   );
 }
+

@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { Cpu } from 'lucide-react';
 import type { TriageSource } from '@/types/triage-report';
 
 export interface TriageSourceBadgeProps {
@@ -6,8 +7,8 @@ export interface TriageSourceBadgeProps {
 }
 
 /**
- * Small badge showing whether triage was done by VLM (blue) or rule-based fallback (amber).
- * Per plan/frontend_agent.md TriageSourceBadge spec.
+ * Modern telemetry badge showing whether triage was performed by VLM (Vision AI)
+ * or Rule-Based Fallback.
  */
 export function TriageSourceBadge({ source }: TriageSourceBadgeProps) {
   const isVLM = source === 'VLM';
@@ -16,14 +17,24 @@ export function TriageSourceBadge({ source }: TriageSourceBadgeProps) {
     <span
       data-testid="triage-source-badge"
       className={clsx(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
         isVLM
-          ? 'bg-blue-100 text-blue-800 border border-blue-300'
-          : 'bg-amber-100 text-amber-800 border border-amber-300'
+          ? 'border-blue-200 bg-blue-50 text-blue-700'
+          : 'border-amber-200 bg-amber-50 text-amber-700'
       )}
     >
-      {!isVLM && <span aria-label="Warning">⚠</span>}
-      {isVLM ? 'VLM' : 'Rule-Based'}
+      {isVLM ? (
+        <>
+          <Cpu size={12} className="text-blue-600" aria-hidden="true" />
+          <span>VLM</span>
+        </>
+      ) : (
+        <>
+          <span aria-hidden="true" className="text-amber-600 font-bold">⚠</span>
+          <span>Rule-Based</span>
+        </>
+      )}
     </span>
   );
 }
+

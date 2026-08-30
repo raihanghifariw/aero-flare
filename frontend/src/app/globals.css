@@ -4,16 +4,132 @@
 
 /* Leaflet CSS is imported via the component itself to avoid SSR issues */
 
-:root {
-  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
-}
-
 body {
-  font-family: var(--font-sans);
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-surface text-ink antialiased selection:bg-brand/20 selection:text-brand;
 }
 
-/* Ensure the map fills available height when used in flex/grid layouts */
+/* ─── Modern Grid & Background Utilities ────────────────────────────────── */
+.bg-grid-pattern {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+}
+
+.bg-radial-brand {
+  background: radial-gradient(circle at 50% 0%, rgba(24, 119, 242, 0.08) 0%, transparent 60%);
+}
+
+/* ─── Focus visibility ──────────────────────────────────────────────────────── */
+:focus-visible {
+  @apply outline-none ring-2 ring-brand/70 ring-offset-2 ring-offset-surface;
+}
+
+/* ─── Scrollbars (clean modern SaaS) ────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ─── Leaflet modern light-theme styling ────────────────────────────────────── */
 .leaflet-container {
   z-index: 0;
+  background: #f1f5f9 !important;
+  font-family: inherit;
 }
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05), 0 0 0 1px #e2e8f0 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+}
+.leaflet-popup-content {
+  margin: 14px 16px !important;
+}
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  padding: 8px !important;
+}
+.leaflet-popup-close-button:hover {
+  color: #0f172a !important;
+}
+.leaflet-control-zoom {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+.leaflet-control-zoom a {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  transition: all 0.15s ease;
+}
+.leaflet-control-zoom a:hover {
+  background: #f8fafc !important;
+  color: #1877f2 !important;
+}
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #64748b !important;
+  font-size: 10px !important;
+  border-top-left-radius: 8px;
+  border-left: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+  backdrop-filter: blur(4px);
+}
+.leaflet-control-attribution a {
+  color: #1877f2 !important;
+}
+
+/* ─── Recharts modern light-theme defaults ──────────────────────────────────── */
+.recharts-cartesian-grid line {
+  stroke: #e2e8f0;
+}
+.recharts-text {
+  fill: #64748b;
+  font-family: inherit;
+}
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+.recharts-default-tooltip {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px;
+  color: #0f172a !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+.recharts-default-legend {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* ─── Motion safety ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
