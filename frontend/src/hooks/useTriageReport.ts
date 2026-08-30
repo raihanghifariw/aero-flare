@@ -9,8 +9,9 @@ import type { TriageReport } from '@/types/triage-report';
 export function useTriageReport(event_id: string | null) {
   const key = event_id ? `/triage/${event_id}` : null;
 
-  return useSWR<TriageReport>(key, apiFetch, {
+  return useSWR<TriageReport | null>(key, apiFetch, {
     revalidateOnFocus: false,
-    // No polling — triage reports are immutable once written
+    shouldRetryOnError: false,
   });
 }
+

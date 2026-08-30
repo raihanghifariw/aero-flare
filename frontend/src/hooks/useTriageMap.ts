@@ -16,10 +16,11 @@ export function useTriageMap(eventsOrIds: (FireEvent | string)[]): Record<string
       missingIds.push(item);
     } else if (item.triage) {
       embeddedMap[item.id] = item.triage;
-    } else {
+    } else if (item.status !== 'PENDING') {
       missingIds.push(item.id);
     }
   }
+
 
   const key = missingIds.length > 0 ? missingIds.slice().sort().join(',') : null;
 

@@ -36,5 +36,7 @@ export function useFireEvents(params: UseFireEventsParams = {}) {
   return useSWR<FireEventsResponse>(key, apiFetch, {
     refreshInterval: EVENTS_POLL_INTERVAL_MS,
     revalidateOnFocus: false,
+    shouldRetryOnError: false,
   });
 }
+

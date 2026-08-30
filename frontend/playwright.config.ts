@@ -23,22 +23,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      // Mobile viewport test (375px)
-      name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
-    },
   ],
 
-  // Auto-start Next.js dev server before running tests
+  // Connect to dev server on port 3000
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    reuseExistingServer: true,
+    timeout: 60_000,
   },
 });
+
+

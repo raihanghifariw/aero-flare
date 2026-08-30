@@ -25,6 +25,10 @@ export async function GET(
       cache: 'no-store',
     });
 
+    if (response.status === 404) {
+      return NextResponse.json(null, { status: 200 });
+    }
+
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       let errorData: unknown;
@@ -35,6 +39,7 @@ export async function GET(
       }
       return NextResponse.json(errorData, { status: response.status });
     }
+
 
     const data: unknown = await response.json();
     return NextResponse.json(data);

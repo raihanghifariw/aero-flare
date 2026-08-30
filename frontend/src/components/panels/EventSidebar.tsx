@@ -337,8 +337,10 @@ export function EventSidebar({
           return (
             <button
               key={event.id}
+              data-testid="event-card-button"
               onClick={() => onEventSelect(event.id)}
               aria-current={isSelected ? 'true' : undefined}
+
               className={clsx(
                 'group w-full text-left p-3.5 transition-all relative select-none',
                 isSelected

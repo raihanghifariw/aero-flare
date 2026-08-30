@@ -9,8 +9,9 @@ import type { Prediction } from '@/types/prediction';
 export function usePrediction(event_id: string | null) {
   const key = event_id ? `/predictions/${event_id}` : null;
 
-  return useSWR<Prediction>(key, apiFetch, {
+  return useSWR<Prediction | null>(key, apiFetch, {
     revalidateOnFocus: false,
-    // No polling — predictions are computed once per event
+    shouldRetryOnError: false,
   });
 }
+
