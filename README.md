@@ -1,158 +1,186 @@
 # Aero-Flare 🔥
 
-**Early Wildfire Detection Triage via Satellite Imagery**
+<p align="center">
+  <strong>Autonomous Wildfire Intelligence & Multimodal Satellite Triage Platform</strong>
+</p>
 
-Aero-Flare is an automated wildfire detection and triage system for Indonesia. It pulls NASA FIRMS thermal anomaly data every 3 hours, analyzes satellite tiles with a local VLM (Qwen2-VL), predicts fire spread using XGBoost, and dispatches real-time alerts via Telegram.
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-14.2-black?style=flat-square&logo=next.js" alt="Next.js 14" />
+  <img src="https://img.shields.io/badge/FastAPI-0.111-009688?style=flat-square&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python" alt="Python 3.10+" />
+  <img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?style=flat-square&logo=tailwind-css" alt="TailwindCSS" />
+  <img src="https://img.shields.io/badge/Leaflet-1.9-199900?style=flat-square&logo=leaflet" alt="Leaflet" />
+  <img src="https://img.shields.io/badge/XGBoost-2.0-FF6F00?style=flat-square" alt="XGBoost" />
+  <img src="https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat-square&logo=docker" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" />
+</p>
 
 ---
 
-## Architecture
+## Overview
+
+**Aero-Flare** is a real-time, automated wildfire detection, satellite triage, and spread-forecasting platform engineered for high-risk peatland and forested regions across Indonesia (Kalimantan, Sumatra, Sulawesi, Papua, and Jawa-Bali).
+
+The system continuously pulls Near-Real-Time (NRT) thermal anomaly vectors from **NASA FIRMS** (MODIS & VIIRS), extracts corresponding optical satellite tiles via **NASA GIBS**, executes multimodal AI computer-vision triage using Vision-Language Models (**Qwen2-VL**), forecasts multi-horizon fire spread with **XGBoost**, and delivers instantaneous dispatch alerts via Telegram and Webhooks to emergency response teams.
+
+---
+
+## Key Features
+
+- **🛰️ Autonomous Satellite Ingestion**: Scheduled telemetry ingestion from NASA FIRMS with multi-sensor deduplication (SNPP, NOAA-20, NOAA-21, Aqua, Terra).
+- **👁️ Multimodal Visual Triage (VLM)**: Automated visual verification of smoke plumes, cloud cover, and active flames using Vision-Language Models with rule-based fallback.
+- **📈 ML Spread Radar & Forecasting**: Gradient-boosted machine learning model predicting fire spread direction and 6h / 12h / 24h expansion radiuses based on wind speed, humidity, and terrain metrics.
+- **🗺️ Interactive Tactical Command Dashboard**: High-contrast, modern SaaS command center powered by Next.js 14 and Leaflet, featuring OpenStreetMap cartography, Indonesian regional presets, and real-time incident inspection.
+- **⚡ Automated Incident Alerting**: Real-time notification dispatch via Telegram and structured webhooks for rapid emergency response.
+
+---
+
+## System Architecture
 
 ```
-GitHub Actions (cron 3h)
-        │
-        ▼
-NASA FIRMS API → Ingestion → GIBS Tile (Cloudflare R2)
-        │
-        ▼
-VLM Triage (Ollama: Qwen2-VL) ──[fail]──► Rule-Based Fallback (FRP > 50MW)
-        │
-        ▼
-XGBoost Spread Prediction (wind, NDVI, humidity)
-        │
-        ▼
-Alert: Telegram + Webhooks
-        │
-        ▼
-Next.js Dashboard (Vercel) — Leaflet map, triage modal, spread overlay
+                       ┌─────────────────────────┐
+                       │ NASA FIRMS / GIBS Feeds │
+                       └────────────┬────────────┘
+                                    │ (Near-Real-Time Hotspots)
+                                    ▼
+                       ┌─────────────────────────┐
+                       │ Ingestion & Deduplication│
+                       └────────────┬────────────┘
+                                    │
+                  ┌─────────────────┴─────────────────┐
+                  ▼                                   ▼
+       ┌─────────────────────┐             ┌─────────────────────┐
+       │   NASA GIBS Tile    │             │   Weather & Terrain  │
+       │ Cloudflare R2 Store │             │   Feature Pipeline  │
+       └──────────┬──────────┘             └──────────┬──────────┘
+                  │                                   │
+                  ▼                                   ▼
+       ┌─────────────────────┐             ┌─────────────────────┐
+       │  Multimodal Triage  │             │   XGBoost Spread    │
+       │ (Qwen2-VL / Rules)  │             │ Prediction (6/12/24h│
+       └──────────┬──────────┘             └──────────┬──────────┘
+                  │                                   │
+                  └─────────────────┬─────────────────┘
+                                    │
+                                    ▼
+                       ┌─────────────────────────┐
+                       │ PostgreSQL / Supabase DB │
+                       └────────────┬────────────┘
+                                    │
+            ┌───────────────────────┴───────────────────────┐
+            ▼                                               ▼
+┌─────────────────────────┐                     ┌─────────────────────────┐
+│ Next.js 14 Command HUD  │                     │  Emergency Dispatcher   │
+│ (Leaflet Map & Explorer)│                     │ (Telegram & Webhooks)   │
+└─────────────────────────┘                     └─────────────────────────┘
 ```
 
 ---
 
-## Free-Tier Stack
-
-| Component | Service | Limit |
-|-----------|---------|-------|
-| Database | Supabase (PostgreSQL) | 500MB free |
-| Tile Storage | Cloudflare R2 | 10GB free, no egress fees |
-| Backend | Railway.app | $5 free credits/month |
-| Frontend | Vercel | 100GB bandwidth free |
-| Pipeline | GitHub Actions | 2,000 min/month free |
-| Observability | Grafana Cloud | 14-day retention free |
-| Satellite Data | NASA GIBS WMTS | Free, no auth |
-| Fire Data | NASA FIRMS API | Free with registration |
-
----
-
-## Quick Start
-
-```bash
-# 1. Clone
-git clone https://github.com/your-org/aero-flare.git
-cd aero-flare
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your keys (see .env.example for all required vars)
-
-# 3. Start local stack
-docker-compose up --build
-
-# 4. Pull VLM model (separate terminal)
-docker exec -it aeroflare_ollama_1 ollama pull qwen2-vl:7b
-
-# 5. Run database migrations
-docker exec -it aeroflare_backend_1 alembic upgrade head
-
-# 6. Test the API
-curl http://localhost:8000/api/v1/health
-```
-
----
-
-## Project Structure
+## Repository Structure
 
 ```
 aero-flare/
-├── plan/           # Architecture & spec documents
-├── task/           # Agent execution checklists (8 phases)
-├── backend/        # FastAPI + SQLAlchemy + XGBoost
-├── frontend/       # Next.js 14 + Leaflet dashboard
-├── ml/             # XGBoost training scripts & models
-├── prompts/        # VLM system prompts (versioned)
-├── data/           # Raw FIRMS CSV (gitignored)
-├── .github/
-│   └── workflows/  # CI, pipeline cron, alert retry, data retention
-└── docker-compose.yml
+├── backend/                  # FastAPI Application & Services
+│   ├── alembic/              # Database migration scripts
+│   ├── app/
+│   │   ├── api/v1/           # REST API Route handlers (Events, Triage, Predictions)
+│   │   ├── core/             # Configuration, database session, security
+│   │   ├── models/           # SQLAlchemy ORM database models
+│   │   ├── schemas/          # Pydantic validation schemas
+│   │   └── services/         # Ingestion, VLM triage, alerts, ML pipelines
+│   ├── ml/                   # Machine learning models & prediction engine
+│   └── tests/                # Unit and integration test suites
+│
+├── frontend/                 # Next.js 14 Operations Command Center
+│   ├── src/
+│   │   ├── app/              # App router pages (Dashboard, Incidents Explorer)
+│   │   ├── components/       # Tactical Map, HUD panels, charts, UI controls
+│   │   ├── hooks/            # SWR telemetry streaming hooks
+│   │   └── lib/              # Map constants, API clients, formatters
+│   └── tests/                # Playwright E2E test suites
+│
+├── docker-compose.yml        # Multi-container local deployment stack
+└── Dockerfile                # Production container specifications
 ```
 
 ---
 
-## Agent Execution Order
+## Tech Stack & Infrastructure
 
-See [`task/README.md`](task/README.md) for the complete 8-phase build sequence.
-
-| Phase | Agent | Task |
-|-------|-------|------|
-| 0 | Setup | Scaffold, Docker, CI |
-| 1 | Backend | FastAPI, ORM, migrations |
-| 2 | VLM + ML | Triage engine, XGBoost |
-| 3 | GHA + Alerts | Pipeline cron, Telegram |
-| 4 | Frontend | Leaflet dashboard |
-| 5 | Security | Hardening, Trivy |
-| 6 | QA | Tests, coverage |
-| 7 | Deploy | Railway, Vercel, R2 |
-| 8 | Debug | Monitoring, runbook |
+| Layer | Technologies | Role |
+|---|---|---|
+| **Frontend** | Next.js 14, React 18, Tailwind CSS, Leaflet, SWR, Recharts | Tactical Geospatial Operations HUD |
+| **Backend** | FastAPI, Python 3.10+, SQLAlchemy, Alembic, Pydantic v2 | High-throughput Async REST API |
+| **Machine Learning** | XGBoost, Scikit-Learn, Ollama (Qwen2-VL) | Multimodal Triage & Fire Spread Prediction |
+| **Database** | PostgreSQL / Supabase | Relational Hotspot & Telemetry Store |
+| **Object Storage** | Cloudflare R2 | Satellite Tile Cache |
+| **Earth Observation** | NASA FIRMS API, NASA GIBS WMTS, OpenStreetMap | Satellite Sensor Imagery & Cartography |
 
 ---
 
-## Production URLs
+## Getting Started
 
-> Fill these in after first deployment (Phase 7)
+### Prerequisites
 
-```
-Dashboard:  https://aero-flare.vercel.app
-API:        https://aero-flare-api.up.railway.app
-API Docs:   https://aero-flare-api.up.railway.app/docs
-Health:     https://aero-flare-api.up.railway.app/api/v1/health
-```
+- [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/)
+- [Node.js](https://nodejs.org/) 18+ (for local frontend development)
+- [Python](https://www.python.org/) 3.10+ (for local backend development)
+
+### Quickstart with Docker Compose
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/raihanghifariw/aero-flare.git
+   cd aero-flare/aero-flare
+   ```
+
+2. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   # Populate your NASA FIRMS API key, Telegram Bot token, and Database credentials in .env
+   ```
+
+3. **Launch the stack:**
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Access the applications:**
+   - **Dashboard**: [http://localhost:3000](http://localhost:3000)
+   - **Backend API**: [http://localhost:8000](http://localhost:8000)
+   - **Interactive API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-## Key Documentation
+## API Specifications
 
-| Document | Description |
-|----------|-------------|
-| [`docs/architecture.md`](docs/architecture.md) | Full system architecture diagram + data flow |
-| [`docs/runbook.md`](docs/runbook.md) | Operations runbook — 7 failure scenarios + fixes |
-| [`docs/release/v1.0.0_qa_report.md`](docs/release/v1.0.0_qa_report.md) | QA release report |
-| [`docs/sql/audit_trigger_setup.sql`](docs/sql/audit_trigger_setup.sql) | PostgreSQL audit triggers (run after migrations) |
-| [`docs/sql/rls_setup.sql`](docs/sql/rls_setup.sql) | Supabase RLS policies (run before first deploy) |
-| [`docs/sql/false_positive_monitoring.sql`](docs/sql/false_positive_monitoring.sql) | Weekly FP rate monitoring query |
-| [`docs/security/hardening_notes.md`](docs/security/hardening_notes.md) | Security verification steps |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local dev setup, test commands, PR process |
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/health` | Service health status and database connectivity |
+| `GET` | `/api/v1/events` | Paginated fire events with status, date, and FRP filters |
+| `GET` | `/api/v1/events/{id}` | Detailed incident telemetry by ID |
+| `GET` | `/api/v1/triage/{event_id}` | Multimodal AI triage assessment and classification |
+| `GET` | `/api/v1/predictions/{event_id}` | XGBoost fire spread forecast (6h, 12h, 24h radiuses) |
+| `GET` | `/api/v1/stats` | Aggregate operational statistics (active fires, ingestion health) |
 
 ---
 
-## Running Tests
+## Quality Assurance & Testing
 
 ```bash
-# Backend — unit + integration (must pass before deploy)
-pytest backend/tests/ -v --cov=backend/app  # requires ≥ 80% coverage
+# Run Backend Unit & Integration Tests (Pytest)
+cd backend
+pytest tests/unit/ -v
 
-# Frontend E2E
-cd frontend && npx playwright test
-
-# QA smoke test (requires running backend)
-bash backend/scripts/qa_smoke_test.sh http://localhost:8000 $API_KEY
+# Run Frontend End-to-End Tests (Playwright)
+cd frontend
+npm run test:e2e
 ```
 
 ---
 
-## Contributing
+## License
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for local dev setup, test commands, and PR process.
-
----
-
-*Version 1.0.0 | Architecture: v1.1.0 | Free-tier verified ✓*
+This project is licensed under the [MIT License](LICENSE).
