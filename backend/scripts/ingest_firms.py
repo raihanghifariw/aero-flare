@@ -75,25 +75,35 @@ async def main() -> None:
     logger.info("ingest_firms.events_upserted", new=len(new_event_ids), skipped=skipped)
 
     # ------------------------------------------------------------------ #
-    # Step 3 — Fetch GIBS tiles and triage each new event                  #
+    # Step 3 — Fetch GIBS tiles and triage each event                      #
     # ------------------------------------------------------------------ #
-    if not new_event_ids:
-        logger.info("ingest_firms.no_new_events")
-        return
-
     from sqlalchemy import select as sa_select
 
     from app.models.fire_event import FireEvent
 
     async with async_session_factory() as db:
-        result = await db.execute(
-            sa_select(FireEvent)
-            .where(FireEvent.id.in_([
-                __import__('uuid').UUID(eid) for eid in new_event_ids
-            ]))
-            .order_by(FireEvent.frp.desc().nullslast())
-        )
-        new_events = result.scalars().all()
+        if new_event_ids:
+            result = await db.execute(
+                sa_select(FireEvent)
+                .where(FireEvent.id.in_([
+                    __import__('uuid').UUID(eid) for eid in new_event_ids
+                ]))
+                .order_by(FireEvent.frp.desc().nullslast())
+            )
+            new_events = result.scalars().all()
+        else:
+            logger.info("ingest_firms.refreshing_recent_events_tiles")
+            result = await db.execute(
+                sa_select(FireEvent)
+                .order_by(FireEvent.detected_at.desc())
+                .limit(30)
+            )
+            new_events = result.scalars().all()
+
+    if not new_events:
+        logger.info("ingest_firms.no_events_to_process")
+        return
+
 
     for event in new_events:
         async with async_session_factory() as db:

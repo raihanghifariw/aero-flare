@@ -24,12 +24,41 @@ from app.core.exceptions import TileNotFoundError
 
 logger = structlog.get_logger()
 
-# GIBS WMTS endpoint — MODIS False Color 7-2-1 (SWIR-NIR-Red) for unambiguous fire/smoke visual triage.
+# GIBS WMTS endpoint — Prioritize VIIRS/MODIS TrueColor daylight imagery
 GIBS_BASE = "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best"
-GIBS_LAYER = "MODIS_Aqua_CorrectedReflectance_Bands721"
-GIBS_FALLBACK_LAYER = "VIIRS_SNPP_CorrectedReflectance_TrueColor"
+GIBS_LAYER = "VIIRS_SNPP_CorrectedReflectance_TrueColor"
+GIBS_FALLBACK_LAYER = "VIIRS_NOAA20_CorrectedReflectance_TrueColor"
 GIBS_ZOOM = 8          # ~1.25km tile footprint, more useful for triage
 GIBS_TILE_MATRIX = "250m"
+
+GIBS_CANDIDATE_LAYERS = [
+    "VIIRS_SNPP_CorrectedReflectance_TrueColor",
+    "VIIRS_NOAA20_CorrectedReflectance_TrueColor",
+    "MODIS_Terra_CorrectedReflectance_TrueColor",
+    "MODIS_Aqua_CorrectedReflectance_TrueColor",
+    "MODIS_Aqua_CorrectedReflectance_Bands721",
+]
+
+
+def _is_black_or_empty_tile(tile_bytes: bytes, min_avg_brightness: float = 12.0) -> bool:
+    """
+    Check if a returned tile is pitch black, nodata mask, or empty.
+    Returns True if the image is valid and mostly black.
+    """
+    import io
+
+    from PIL import Image, ImageStat
+
+    if not tile_bytes:
+        return True
+    try:
+        im = Image.open(io.BytesIO(tile_bytes))
+        stat = ImageStat.Stat(im)
+        avg = sum(stat.mean) / len(stat.mean)
+        return avg < min_avg_brightness
+    except Exception:
+        return False
+
 
 
 def _lat_lon_to_tile(lat: float, lon: float, zoom: int = GIBS_ZOOM) -> tuple[int, int]:
@@ -55,7 +84,6 @@ def _lat_lon_to_tile(lat: float, lon: float, zoom: int = GIBS_ZOOM) -> tuple[int
     return col, row
 
 
-
 def _make_r2_client():  # type: ignore[no-untyped-def]
     settings = get_settings()
     return boto3.client(
@@ -76,7 +104,8 @@ async def fetch_gibs_tile(
 ) -> str | None:
     """
     Fetch a GIBS WMTS tile for the given coordinates and date.
-    Tries False-Color 7-2-1 primary layer first, falling back to TrueColor if unavailable.
+    Tries multiple high-resolution TrueColor satellite layers across candidate dates,
+    discarding pitch-black/empty swaths and selecting the clearest daylight pass.
     Uploads to Cloudflare R2 and returns the R2 object key.
 
     Returns:
@@ -86,49 +115,70 @@ async def fetch_gibs_tile(
     Raises:
         TileNotFoundError: on persistent fetch failure (non-404).
     """
+    from datetime import timedelta
+
     settings = get_settings()
     col, row = _lat_lon_to_tile(lat, lon, GIBS_ZOOM)
 
-    resp = None
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for layer in [GIBS_LAYER, GIBS_FALLBACK_LAYER]:
-            url = (
-                f"{GIBS_BASE}/{layer}/default/{date_str}"
-                f"/{GIBS_TILE_MATRIX}/{GIBS_ZOOM}/{row}/{col}.jpg"
-            )
-            logger.info("gibs_tile_fetch_start", lat=lat, lon=lon, date=date_str, layer=layer, url=url)
-            try:
-                r = await client.get(url)
-                if r.status_code == 200:
-                    resp = r
-                    break
-                if r.status_code == 404:
-                    continue
-                r.raise_for_status()
-            except httpx.RequestError as e:
-                raise TileNotFoundError(f"GIBS network error: {e}") from e
-            except httpx.HTTPStatusError as e:
-                raise TileNotFoundError(
-                    f"GIBS returned HTTP {e.response.status_code} for {url}"
-                ) from e
+    # Candidate dates: primary detection date, then previous day if today's swath is pending
+    dates_to_try = [date_str]
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        prev_date = (dt - timedelta(days=1)).strftime("%Y-%m-%d")
+        dates_to_try.append(prev_date)
+    except ValueError:
+        pass
 
-    if resp is None:
+    tile_bytes: bytes | None = None
+    chosen_date = date_str
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for candidate_date in dates_to_try:
+            for layer in GIBS_CANDIDATE_LAYERS:
+                url = (
+                    f"{GIBS_BASE}/{layer}/default/{candidate_date}"
+                    f"/{GIBS_TILE_MATRIX}/{GIBS_ZOOM}/{row}/{col}.jpg"
+                )
+                logger.info("gibs_tile_fetch_start", lat=lat, lon=lon, date=candidate_date, layer=layer, url=url)
+                try:
+                    r = await client.get(url)
+                    if r.status_code == 200:
+                        content = r.content
+                        if not _is_black_or_empty_tile(content):
+                            tile_bytes = content
+                            chosen_date = candidate_date
+                            logger.info(
+                                "gibs_tile_selected",
+                                layer=layer,
+                                date=candidate_date,
+                                size=len(content),
+                            )
+                            break
+                        logger.info("gibs_tile_black_discarded", layer=layer, date=candidate_date)
+                    elif r.status_code == 404:
+                        continue
+                    else:
+                        r.raise_for_status()
+                except httpx.RequestError as e:
+                    raise TileNotFoundError(f"GIBS network error: {e}") from e
+                except httpx.HTTPStatusError as e:
+                    raise TileNotFoundError(
+                        f"GIBS returned HTTP {e.response.status_code} for {url}"
+                    ) from e
+            if tile_bytes is not None:
+                break
+
+    if tile_bytes is None:
         logger.warning("gibs_tile_unavailable", lat=lat, lon=lon, date=date_str)
         return None
 
-    try:
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        raise TileNotFoundError(
-            f"GIBS returned HTTP {e.response.status_code} for {url}"
-        ) from e
 
-    tile_bytes = resp.content
     tile_size = len(tile_bytes)
 
     # Build R2 key: tiles/{date}/{event_id or coord}_{row}_{col}.jpg
     label = event_id or f"{lat:.4f}_{lon:.4f}"
-    r2_key = f"tiles/{date_str}/{label}_{row}_{col}.jpg"
+    r2_key = f"tiles/{chosen_date}/{label}_{row}_{col}.jpg"
+
 
     # Upload to R2 — synchronous boto3 call (acceptable in background task context)
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
