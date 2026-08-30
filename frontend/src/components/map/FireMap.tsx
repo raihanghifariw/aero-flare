@@ -94,11 +94,12 @@ export function FireMap({
   selectedEventId = null,
   onMarkerSelect,
 }: FireMapProps) {
-  const [activeLayer, setActiveLayer] = useState<LayerKey>('VOYAGER');
+  const [activeLayer, setActiveLayer] = useState<LayerKey>('OSM');
   const [layerMenuOpen, setLayerMenuOpen] = useState(false);
   const [targetView, setTargetView] = useState<{ center: [number, number]; zoom: number } | null>(null);
 
-  const currentTileConfig = MAP_LAYERS[activeLayer] || MAP_LAYERS.VOYAGER;
+  const currentTileConfig = MAP_LAYERS[activeLayer] || MAP_LAYERS.OSM;
+
 
   return (
     <div className="relative h-full w-full">

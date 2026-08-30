@@ -79,36 +79,37 @@ export const MAP_DEFAULT_CENTER: [number, number] = [
 
 export const MAP_DEFAULT_ZOOM = 5;
 
-/** Base Tile Layers */
+/** Base Tile Layers (100% Free, No API Key Required) */
 export const MAP_LAYERS = {
-  VOYAGER: {
-    id: 'voyager',
-    name: 'Carto Voyager (Clean)',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  OSM: {
+    id: 'osm',
+    name: 'OpenStreetMap Standard',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
-  LIGHT: {
-    id: 'light',
-    name: 'Positron Light',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  HOT: {
+    id: 'hot',
+    name: 'Humanitarian OSM (Wildfire)',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/">Humanitarian OpenStreetMap Team</a>',
   },
   SATELLITE: {
     id: 'satellite',
-    name: 'Satellite Hybrid',
+    name: 'Satellite Hybrid (ESRI)',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
   },
-  DARK: {
-    id: 'dark',
-    name: 'Dark Mode',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  TOPO: {
+    id: 'topo',
+    name: 'Topographic Terrain',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
   },
 } as const;
 
-export const OSM_TILE_URL = MAP_LAYERS.VOYAGER.url;
-export const OSM_ATTRIBUTION = MAP_LAYERS.VOYAGER.attribution;
+export const OSM_TILE_URL = MAP_LAYERS.OSM.url;
+export const OSM_ATTRIBUTION = MAP_LAYERS.OSM.attribution;
+
 
 /** Indonesian Regional Presets for fast map jump */
 export const INDONESIA_REGIONS = [
