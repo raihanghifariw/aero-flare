@@ -131,10 +131,13 @@ export function FireMarker({ event, triage, isSelected = false, onSelect }: Fire
 
             <Link
               href={`/events/${event.id}`}
-              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-brand-dark"
+              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-3 py-2 text-xs font-bold !text-white shadow-sm transition-all hover:bg-brand-dark"
+              style={{ color: '#ffffff' }}
             >
-              <span>Inspect Full Incident Dossier</span>
-              <ExternalLink size={12} className="text-white" aria-hidden="true" />
+              <span className="!text-white font-bold" style={{ color: '#ffffff' }}>
+                Inspect Full Incident Dossier
+              </span>
+              <ExternalLink size={12} className="!text-white shrink-0" style={{ color: '#ffffff' }} aria-hidden="true" />
             </Link>
           </div>
         </Popup>
@@ -142,6 +145,7 @@ export function FireMarker({ event, triage, isSelected = false, onSelect }: Fire
     </>
   );
 }
+
 
 
 

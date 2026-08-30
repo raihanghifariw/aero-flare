@@ -63,10 +63,28 @@ body {
 .leaflet-popup-content {
   margin: 14px 16px !important;
 }
+.leaflet-popup-content a {
+  text-decoration: none !important;
+}
+.leaflet-popup-content a.bg-brand,
+.leaflet-popup-content a[href*="/events/"] {
+  color: #ffffff !important;
+  background-color: #1877f2 !important;
+}
+.leaflet-popup-content a.bg-brand:hover,
+.leaflet-popup-content a[href*="/events/"]:hover {
+  color: #ffffff !important;
+  background-color: #1d4ed8 !important;
+}
+.leaflet-popup-content a.bg-brand *,
+.leaflet-popup-content a[href*="/events/"] * {
+  color: #ffffff !important;
+}
 .leaflet-popup-close-button {
   color: #94a3b8 !important;
   padding: 8px !important;
 }
+
 .leaflet-popup-close-button:hover {
   color: #0f172a !important;
 }
