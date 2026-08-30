@@ -3,6 +3,8 @@ Unit tests for dependency helpers in app.api.deps.
 """
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from app.api.deps import get_db
@@ -14,8 +16,6 @@ async def test_get_db_session_flow() -> None:
     gen = get_db()
     session = await gen.__anext__()
     assert session is not None
-    # End generator normally
-    try:
+    with contextlib.suppress(StopAsyncIteration):
         await gen.__anext__()
-    except StopAsyncIteration:
-        pass
+

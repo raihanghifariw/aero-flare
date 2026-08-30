@@ -118,7 +118,7 @@ def process_event_task(self: Any, event_id: str) -> dict[str, Any]:
         return asyncio.run(_async_process_event(event_id))
     except Exception as exc:
         logger.error("process_event_task_failed", event_id=event_id, error=str(exc))
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @celery_app.task(bind=True, name="tasks.ingest_firms", max_retries=2, default_retry_delay=120)
@@ -138,4 +138,5 @@ def ingest_firms_task(self: Any, source: str = "scheduled") -> dict[str, Any]:
         return result
     except Exception as exc:
         logger.error("ingest_firms_task_failed", trigger=source, error=str(exc))
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
+

@@ -3,14 +3,25 @@ Unit tests for Celery tasks and Celery-backed Ingestion API endpoints.
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.main import app
-from app.workers.tasks import _async_ingest_firms, _async_process_event, ingest_firms_task, process_event_task
+from app.models.fire_event import FireEvent
+from app.models.prediction import Prediction
+from app.models.triage_report import TriageReport
+from app.workers.tasks import (
+    _async_ingest_firms,
+    _async_process_event,
+    ingest_firms_task,
+    process_event_task,
+)
+from tests.conftest import TestSessionLocal
 
 
 def test_process_event_task_wrapper() -> None:
@@ -80,12 +91,6 @@ async def test_get_ingestion_status_api_celery(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_async_process_event_flow(db_session: AsyncSession) -> None:
     """Test _async_process_event end-to-end with mocks."""
-    from app.models.fire_event import FireEvent
-    from app.models.prediction import Prediction
-    from app.models.triage_report import TriageReport
-
-    from datetime import datetime, timezone
-
     event = FireEvent(
         id=uuid.uuid4(),
         firms_id="firms_async_test",
@@ -124,9 +129,6 @@ async def test_async_process_event_flow(db_session: AsyncSession) -> None:
         predicted_at=datetime.now(timezone.utc),
     )
 
-
-    from tests.conftest import TestSessionLocal
-
     with (
         patch("app.workers.tasks.async_session_factory", TestSessionLocal),
         patch("app.workers.tasks.fetch_and_upload_tile", AsyncMock(return_value="tiles/test.png")),
@@ -144,8 +146,6 @@ async def test_async_process_event_flow(db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_async_ingest_firms_flow() -> None:
     """Test _async_ingest_firms flow."""
-    from tests.conftest import TestSessionLocal
-
     with (
         patch("app.workers.tasks.fetch_firms_data", AsyncMock(return_value="data/sample.csv")),
         patch("app.workers.tasks.parse_firms_csv", return_value=[{}]),
@@ -158,11 +158,9 @@ async def test_async_ingest_firms_flow() -> None:
         assert len(res["new_event_ids"]) == 1
 
 
-
 @pytest.mark.asyncio
 async def test_worker_handle_job_flow() -> None:
     """Test handle_job from worker.py."""
-    import asyncio
     from app.workers.worker import handle_job
 
     sem = asyncio.Semaphore(1)
@@ -178,4 +176,5 @@ async def test_worker_handle_job_flow() -> None:
     ):
         await handle_job(job, sem)
         assert mock_update.call_count == 2  # running, then completed
+
 

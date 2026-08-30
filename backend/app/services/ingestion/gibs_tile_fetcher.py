@@ -12,6 +12,7 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import boto3
 import httpx
@@ -222,14 +223,15 @@ def get_r2_presigned_url(r2_key: str, expires_in: int = 3600) -> str:
     )
 
 
-async def fetch_and_upload_tile(event: object) -> str | None:
+async def fetch_and_upload_tile(event: Any) -> str | None:
     """
     Helper for FireEvent objects — extracts lat, lon, detected_at, id and calls fetch_gibs_tile.
     """
-    lat: float = event.lat
-    lon: float = event.lon
+    lat: float = float(event.lat)
+    lon: float = float(event.lon)
     event_id: str = str(event.id)
     detected_at = getattr(event, "detected_at", None)
+
     if detected_at:
         date_str = detected_at.strftime("%Y-%m-%d")
     else:
@@ -240,3 +242,4 @@ async def fetch_and_upload_tile(event: object) -> str | None:
         date_str=date_str,
         event_id=event_id,
     )
+

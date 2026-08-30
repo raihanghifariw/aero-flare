@@ -4,7 +4,6 @@ Handles distributed background jobs and scheduled tasks (Celery Beat).
 """
 from __future__ import annotations
 
-import os
 from celery import Celery
 from celery.schedules import crontab
 

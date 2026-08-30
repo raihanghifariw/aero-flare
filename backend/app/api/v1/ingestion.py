@@ -5,7 +5,6 @@ GET /api/v1/ingestion/status/{job_id} — check status of background ingestion.
 
 NOTE: Do NOT add `from __future__ import annotations` here (breaks slowapi-wrapped endpoints).
 """
-import asyncio
 from typing import Any
 
 import structlog

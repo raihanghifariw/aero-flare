@@ -5,18 +5,16 @@ Can run Celery worker or standalone async queue consumer.
 from __future__ import annotations
 
 import asyncio
-import sys
 from typing import Any
 
 import structlog
 
-from app.core.config import get_settings
-from app.core.logging import configure_logging
 from app.core.queue import task_queue
 from app.workers.celery_app import celery_app
-from app.workers.tasks import _async_ingest_firms, _async_process_event, ingest_firms_task, process_event_task
+from app.workers.tasks import _async_ingest_firms, _async_process_event
 
 logger = structlog.get_logger()
+
 MAX_CONCURRENT_TASKS = 6
 
 

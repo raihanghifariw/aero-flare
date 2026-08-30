@@ -28,7 +28,7 @@ class TaskQueue:
     """
 
     def __init__(self) -> None:
-        self._redis: aioredis.Redis | None = None
+        self._redis: Any = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._in_memory_jobs: dict[str, dict[str, Any]] = {}
         self._in_memory_queue: asyncio.Queue[dict[str, Any]] | None = None
@@ -38,8 +38,7 @@ class TaskQueue:
             self._in_memory_queue = asyncio.Queue()
         return self._in_memory_queue
 
-    async def _get_client(self) -> aioredis.Redis | None:
-
+    async def _get_client(self) -> Any:
         settings = get_settings()
         if not settings.QUEUE_ENABLED or not settings.REDIS_URL:
             return None
@@ -63,7 +62,6 @@ class TaskQueue:
                 self._redis = None
 
         return self._redis
-
 
     async def enqueue(self, task_name: str, payload: dict[str, Any]) -> str:
         """
@@ -145,7 +143,7 @@ class TaskQueue:
         client = await self._get_client()
         if client is not None:
             try:
-                item = await client.brpop(QUEUE_KEY, timeout=timeout)
+                item = await client.brpop([QUEUE_KEY], timeout=timeout)
                 if item:
                     _, raw = item
                     return json.loads(raw)
@@ -156,6 +154,7 @@ class TaskQueue:
             return await asyncio.wait_for(self._get_in_memory_queue().get(), timeout=float(timeout))
         except (asyncio.TimeoutError, TimeoutError):
             return None
+
 
 
     async def close(self) -> None:
