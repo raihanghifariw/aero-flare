@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import signal
 import sys
@@ -27,6 +28,7 @@ from app.core.logging import configure_logging
 from app.core.queue import task_queue
 from app.models.base import async_session_factory
 from app.models.fire_event import FireEvent
+from app.services.ingestion.event_writer import upsert_fire_events
 from app.services.ingestion.firms_parser import fetch_firms_data, parse_firms_csv
 from app.services.ingestion.gibs_tile_fetcher import fetch_and_upload_tile
 from app.services.prediction.prediction_service import run_prediction
@@ -98,7 +100,6 @@ async def ingest_firms_task(trigger_source: str = "scheduled") -> dict[str, Any]
     """
     logger.info("worker_firms_ingest_start", trigger=trigger_source)
     settings = get_settings()
-    from app.services.ingestion.event_writer import upsert_fire_events
 
     csv_path = await fetch_firms_data(api_key=settings.FIRMS_API_KEY)
     events_data = parse_firms_csv(csv_path)
@@ -161,13 +162,10 @@ async def run_worker() -> None:
         logger.info("worker_shutdown_signal_received")
         running = False
 
-    import contextlib
-
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         with contextlib.suppress(NotImplementedError):
             loop.add_signal_handler(sig, _signal_handler)
-
 
     while running:
         try:
