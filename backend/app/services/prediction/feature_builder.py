@@ -34,12 +34,20 @@ FEATURE_COLUMNS = [
 async def fetch_weather_features(lat: float, lon: float) -> dict[str, float]:
     """
     Fetch current weather for a coordinate from Open-Meteo (free, no API key).
+    Cached per coordinate grid (2 decimal places) for 30 minutes to reduce network I/O.
 
     Returns:
         {"wind_speed": float, "wind_direction": float, "humidity": float}
     Raises:
         PredictionError: if the request fails.
     """
+    from app.core.cache import cache
+
+    cache_key = f"weather:{lat:.2f}_{lon:.2f}"
+    cached_weather = await cache.get(cache_key)
+    if cached_weather is not None:
+        return cached_weather
+
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -57,11 +65,14 @@ async def fetch_weather_features(lat: float, lon: float) -> dict[str, float]:
         raise PredictionError(f"Open-Meteo network error: {e}") from e
 
     data = resp.json().get("current", {})
-    return {
+    weather = {
         "wind_speed": float(data.get("wind_speed_10m", 3.0)),
         "wind_direction": float(data.get("wind_direction_10m", 180.0)),
         "humidity": float(data.get("relative_humidity_2m", 60.0)),
     }
+    await cache.set(cache_key, weather, ttl=1800)
+    return weather
+
 
 
 @functools.lru_cache(maxsize=512)

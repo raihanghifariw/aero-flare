@@ -68,10 +68,17 @@ class Settings(BaseSettings):
     GRAFANA_INSTANCE_ID: str = ""
     GRAFANA_API_TOKEN: str = ""
 
+    # --- Redis & Cache / Queue ---
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CACHE_ENABLED: bool = True
+    QUEUE_ENABLED: bool = True
+
+
     # --- Open-Meteo ---
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1/"
 
-    @field_validator("DATABASE_URL", "FIRMS_API_KEY", "OLLAMA_BASE_URL", "API_KEY", "SECRET_KEY", mode="before")
+    @field_validator("DATABASE_URL", "FIRMS_API_KEY", "OLLAMA_BASE_URL", "API_KEY", "SECRET_KEY", "REDIS_URL", mode="before")
+
     @classmethod
     def strip_whitespace(cls, v: object) -> object:
         if isinstance(v, str):

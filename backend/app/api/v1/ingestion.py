@@ -1,109 +1,55 @@
 """
-Ingestion trigger endpoint — wired to the full pipeline (Phase 2 update).
-POST /api/v1/ingestion/trigger — called by GitHub Actions pipeline every 3 hours.
+Ingestion trigger endpoint — wired to distributed task queue (Scalable Architecture).
+POST /api/v1/ingestion/trigger — called by GitHub Actions or admin dashboard.
+GET /api/v1/ingestion/status/{job_id} — check status of background ingestion.
 
 NOTE: Do NOT add `from __future__ import annotations` here (breaks slowapi-wrapped endpoints).
 """
+import asyncio
+from typing import Any
+
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, verify_api_key
-from app.core.config import get_settings
+from app.core.queue import task_queue
 from app.core.security import limiter
-from app.models.fire_event import FireEvent
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 logger = structlog.get_logger()
-TRIAGE_BATCH_SIZE = 50
 
 
 class IngestionResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     message: str
-    events_created: int = 0
-    events_skipped: int = 0
+    job_id: str | None = None
+    status: str = "queued"
 
 
-async def _run_pipeline(db: AsyncSession) -> tuple[int, int]:
-    """Full ingestion + triage + prediction pipeline (background task)."""
-    from app.services.ingestion.event_writer import upsert_fire_events
-    from app.services.ingestion.firms_parser import fetch_firms_data, parse_firms_csv
-    from app.services.ingestion.gibs_tile_fetcher import fetch_gibs_tile
-    from app.services.prediction.prediction_service import run_prediction
-    from app.services.triage.triage_service import run_triage
+class JobStatusResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
 
-    settings = get_settings()
+    job_id: str
+    task_name: str
+    status: str
+    enqueued_at: float | None = None
+    updated_at: float | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
 
-    # 1. Fetch FIRMS CSV
-    csv_path = await fetch_firms_data(api_key=settings.FIRMS_API_KEY)
 
-    # 2. Parse + deduplicate
-    events_data = parse_firms_csv(csv_path)
-
-    # 3. Upsert events
-    new_ids, skipped = await upsert_fire_events(events_data, db)
-    await db.commit()
-
-    # Process new events and resume pending events left by an interrupted run.
-    result = await db.execute(
-        select(FireEvent)
-        .where(
-            FireEvent.id.in_(new_ids)
-            if new_ids
-            else FireEvent.status == "PENDING"
-        )
-        .order_by(FireEvent.frp.desc().nullslast(), FireEvent.detected_at.desc())
-        .limit(TRIAGE_BATCH_SIZE)
-    )
-    new_events = result.scalars().all()
-
-    if not new_events:
-        logger.info("ingestion_no_pending_events", skipped=skipped)
-        return 0, skipped
-
-    # 4. For each event: fetch GIBS tile → triage → predict
-
-    for event in new_events:
-        # Fetch tile
-        from datetime import timezone
-        date_str = event.detected_at.astimezone(timezone.utc).strftime("%Y-%m-%d")
-        try:
-            r2_key = await fetch_gibs_tile(event.lat, event.lon, date_str, str(event.id))
-            if r2_key:
-                from sqlalchemy import update
-                await db.execute(
-                    update(FireEvent).where(FireEvent.id == event.id).values(tile_url=r2_key)
-                )
-                await db.commit()
-                await db.refresh(event)
-        except Exception as exc:
-            logger.warning("tile_fetch_skipped", event_id=str(event.id), error=str(exc))
-
-        # Triage
-        try:
-            triage_report = await run_triage(event, db)
-            await db.commit()
-        except Exception as exc:
-            logger.warning("triage_skipped", event_id=str(event.id), error=str(exc))
-            await db.rollback()
-            continue
-
-        # Prediction (only for confirmed/probable fires)
-        if triage_report.classification in ("CONFIRMED_FIRE", "PROBABLE_FIRE"):
-            try:
-                await run_prediction(event, triage_report, db)
-                await db.commit()
-            except Exception as e:
-                logger.warning(
-                    "prediction_skipped", event_id=str(event.id), error=str(e)
-                )
-
-    logger.info("pipeline_complete", processed=len(new_events), new=len(new_ids), skipped=skipped)
-    return len(new_events), skipped
+async def _drain_in_memory_queue() -> None:
+    """Drain in-memory queue if no external worker process is consuming."""
+    from app.workers.worker import handle_job
+    semaphore = asyncio.Semaphore(4)
+    while True:
+        job = await task_queue.pop_job(timeout=1)
+        if not job:
+            break
+        await handle_job(job, semaphore)
 
 
 @router.post(
@@ -112,25 +58,59 @@ async def _run_pipeline(db: AsyncSession) -> tuple[int, int]:
     status_code=status.HTTP_202_ACCEPTED,
     summary="Trigger FIRMS ingestion pipeline",
     description=(
-        "Called by GitHub Actions firms_ingest.yml every 3 hours. "
-        "Pulls latest FIRMS data, fetches GIBS tiles, runs VLM triage, "
-        "triggers XGBoost predictions, and dispatches alerts."
+        "Enqueues FIRMS ingestion into the background task queue. "
+        "Returns 202 immediately with job_id for status tracking."
     ),
     dependencies=[Depends(verify_api_key)],
 )
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 async def trigger_ingestion(
     request: Request,  # required by slowapi
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> IngestionResponse:
     """
-    Trigger the full FIRMS ingestion + triage pipeline.
-    Returns 202 immediately; pipeline runs in background.
+    Trigger the full FIRMS ingestion + triage pipeline via TaskQueue.
+    Returns 202 Accepted immediately.
     """
     logger.info("ingestion_trigger_received")
-    background_tasks.add_task(_run_pipeline, db)
+    job_id = await task_queue.enqueue("ingest_firms", {"source": "api_trigger"})
+
+    # Ensure background worker processing for in-memory fallback
+    background_tasks.add_task(_drain_in_memory_queue)
 
     return IngestionResponse(
-        message="Ingestion pipeline triggered. Processing in background.",
+        message="Ingestion pipeline queued successfully.",
+        job_id=job_id,
+        status="queued",
+    )
+
+
+@router.get(
+    "/status/{job_id}",
+    response_model=JobStatusResponse,
+    summary="Get status of an ingestion or processing job",
+    dependencies=[Depends(verify_api_key)],
+)
+@limiter.limit("60/minute")
+async def get_ingestion_job_status(
+    request: Request,
+    job_id: str,
+) -> JobStatusResponse:
+    """Check progress and result of a background ingestion job."""
+    job_data = await task_queue.get_job_status(job_id)
+    if not job_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found",
+        )
+
+    return JobStatusResponse(
+        job_id=job_data["job_id"],
+        task_name=job_data.get("task_name", "unknown"),
+        status=job_data.get("status", "unknown"),
+        enqueued_at=job_data.get("enqueued_at"),
+        updated_at=job_data.get("updated_at"),
+        result=job_data.get("result"),
+        error=job_data.get("error"),
     )

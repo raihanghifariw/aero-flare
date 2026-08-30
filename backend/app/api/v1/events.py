@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, verify_api_key
+from app.core.cache import cache
 from app.core.security import limiter
 from app.models.fire_event import FireEvent
 from app.models.triage_report import TriageReport
@@ -45,6 +46,13 @@ async def list_events(
     classification: str | None = Query(None, description="Filter by classification"),
     db: AsyncSession = Depends(get_db),
 ) -> FireEventsResponse:
+    # 1. Check cache for instantaneous response
+    cache_key = f"events:list:{page}:{limit}:{status}:{date_from}:{date_to}:{danger_level}:{classification}"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return FireEventsResponse.model_validate(cached_data)
+
+
     # Subquery filtering for danger_level or classification
     if danger_level is not None or classification is not None:
         tr_subq = select(TriageReport.event_id)
@@ -186,13 +194,16 @@ async def list_events(
         event_schemas.append(schema)
 
     offset = (page - 1) * limit
-    return FireEventsResponse(
+    response = FireEventsResponse(
         data=event_schemas,
         total=total,
         page=page,
         page_size=limit,
         has_next=(offset + limit) < total,
     )
+    # Cache list for 15 seconds
+    await cache.set(cache_key, response.model_dump(mode="json"), ttl=15)
+    return response
 
 
 @router.get(
@@ -209,6 +220,11 @@ async def get_event(
     db: AsyncSession = Depends(get_db),
 ) -> FireEventSchema:
     """Retrieve a single fire event by its UUID."""
+    cache_key = f"events:detail:{event_id}"
+    cached_event = await cache.get(cache_key)
+    if cached_event is not None:
+        return FireEventSchema.model_validate(cached_event)
+
     result = await db.execute(
         select(FireEvent).where(FireEvent.id == event_id)
     )
@@ -222,4 +238,7 @@ async def get_event(
                 trace_id=get_trace_id(),
             ).model_dump(mode="json"),
         )
-    return FireEventSchema.model_validate(event)
+    schema = FireEventSchema.model_validate(event)
+    await cache.set(cache_key, schema.model_dump(mode="json"), ttl=60)
+    return schema
+

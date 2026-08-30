@@ -28,8 +28,10 @@ os.environ.setdefault("CLOUDFLARE_R2_SECRET", "test-secret")
 os.environ.setdefault("FIRMS_API_KEY", "test-firms-key")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-bot-token")
 os.environ.setdefault("TELEGRAM_CHANNEL_ID", "-100123456789")
+os.environ["REDIS_URL"] = ""
 
 from app.api.deps import get_db  # noqa: E402
+from app.core.cache import cache  # noqa: E402
 from app.main import app  # noqa: E402 — must be after env patching
 from app.models.base import Base  # noqa: E402
 
@@ -49,6 +51,14 @@ TestSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 )
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def auto_clear_cache() -> AsyncIterator[None]:
+    """Ensure in-memory cache is pristine between tests."""
+    cache._in_memory_store.clear()
+    yield
+    cache._in_memory_store.clear()
+
+
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncIterator[AsyncSession]:
     """Create all tables, yield a session, then drop all tables."""
@@ -58,6 +68,7 @@ async def db_session() -> AsyncIterator[AsyncSession]:
         yield session
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
 
 
 @pytest_asyncio.fixture

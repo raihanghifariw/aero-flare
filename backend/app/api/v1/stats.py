@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, verify_api_key
+from app.core.cache import cache
 from app.models.fire_event import FireEvent
 from app.models.triage_report import TriageReport
 
@@ -51,9 +52,15 @@ async def get_stats_summary(
     db: AsyncSession = Depends(get_db),
 ) -> StatsSummary:
     """Aggregate statistics for fire events over a given date range."""
+    cache_key = f"stats:summary:{date_from}:{date_to}"
+    cached_stats = await cache.get(cache_key)
+    if cached_stats is not None:
+        return StatsSummary.model_validate(cached_stats)
+
     now = datetime.now(timezone.utc)
     _from = date_from or (now - timedelta(days=7))
     _to = date_to or now
+
 
     if _from.tzinfo is None:
         _from = _from.replace(tzinfo=timezone.utc)
@@ -108,7 +115,7 @@ async def get_stats_summary(
     vlm_count = await _count_by_source("VLM")
     rule_count = await _count_by_source("RULE_BASED_FALLBACK")
 
-    return StatsSummary(
+    result = StatsSummary(
         total_events=total,
         confirmed_fires=confirmed,
         probable_fires=probable,
@@ -120,3 +127,6 @@ async def get_stats_summary(
         date_from=_from,
         date_to=_to,
     )
+    await cache.set(cache_key, result.model_dump(mode="json"), ttl=60)
+    return result
+
