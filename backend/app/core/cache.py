@@ -27,31 +27,41 @@ class CacheService:
 
     def __init__(self) -> None:
         self._redis: aioredis.Redis | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._in_memory_store: dict[str, tuple[Any, float]] = {}
         self._redis_available: bool | None = None
 
     async def _get_client(self) -> aioredis.Redis | None:
+        import asyncio
+
         settings = get_settings()
         if not settings.CACHE_ENABLED or not settings.REDIS_URL:
             return None
+
+        current_loop = asyncio.get_running_loop()
+        if self._redis is not None and self._loop != current_loop:
+            self._redis = None
 
         if self._redis is None:
             try:
                 self._redis = aioredis.from_url(
                     settings.REDIS_URL,
                     decode_responses=True,
-                    socket_timeout=1.5,
-                    socket_connect_timeout=1.5,
+                    socket_timeout=3.0,
+                    socket_connect_timeout=3.0,
                 )
                 await self._redis.ping()
+                self._loop = current_loop
                 self._redis_available = True
-                logger.info("redis_cache_connected", url=settings.REDIS_URL)
+                safe_host = settings.REDIS_URL.split("@")[-1]
+                logger.info("redis_cache_connected", host=safe_host)
             except Exception as e:
                 logger.warning("redis_cache_unavailable_using_fallback", error=str(e))
                 self._redis_available = False
                 self._redis = None
 
         return self._redis
+
 
     async def get(self, key: str) -> Any | None:
         """Retrieve a value from Redis or in-memory fallback store."""

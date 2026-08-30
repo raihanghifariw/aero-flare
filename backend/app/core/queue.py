@@ -29,6 +29,7 @@ class TaskQueue:
 
     def __init__(self) -> None:
         self._redis: aioredis.Redis | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._in_memory_jobs: dict[str, dict[str, Any]] = {}
         self._in_memory_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
@@ -37,20 +38,26 @@ class TaskQueue:
         if not settings.QUEUE_ENABLED or not settings.REDIS_URL:
             return None
 
+        current_loop = asyncio.get_running_loop()
+        if self._redis is not None and self._loop != current_loop:
+            self._redis = None
+
         if self._redis is None:
             try:
                 self._redis = aioredis.from_url(
                     settings.REDIS_URL,
                     decode_responses=True,
-                    socket_timeout=2.0,
-                    socket_connect_timeout=2.0,
+                    socket_timeout=3.0,
+                    socket_connect_timeout=3.0,
                 )
                 await self._redis.ping()
+                self._loop = current_loop
             except Exception as e:
                 logger.warning("redis_queue_unavailable_using_fallback", error=str(e))
                 self._redis = None
 
         return self._redis
+
 
     async def enqueue(self, task_name: str, payload: dict[str, Any]) -> str:
         """
@@ -144,6 +151,13 @@ class TaskQueue:
         except (asyncio.TimeoutError, TimeoutError):
             return None
 
+    async def close(self) -> None:
+        """Close connection pool cleanly."""
+        if self._redis is not None:
+            await self._redis.aclose()
+            self._redis = None
+
 
 # Singleton instance
 task_queue = TaskQueue()
+
