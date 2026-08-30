@@ -5,6 +5,7 @@ FR-01: Pull FIRMS data for Indonesia bounding box.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timezone
 from pathlib import Path

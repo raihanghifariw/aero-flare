@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import os
 import textwrap
+from datetime import timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-
 from app.core.exceptions import IngestionError
-from app.services.ingestion.firms_parser import parse_firms_csv
+from app.services.ingestion.firms_parser import fetch_firms_data, parse_firms_csv
 
 VALID_CSV = textwrap.dedent("""\
     latitude,longitude,brightness,frp,acq_date,acq_time,satellite,confidence
@@ -54,7 +55,6 @@ def test_parse_firms_csv_deduplicates_same_location(valid_csv_file):
 
 def test_parse_firms_csv_parses_detected_at(valid_csv_file):
     events = parse_firms_csv(valid_csv_file)
-    from datetime import timezone
     for e in events:
         assert e["detected_at"].tzinfo == timezone.utc
 
@@ -77,10 +77,7 @@ def test_parse_firms_csv_missing_file_raises_ingestion_error():
 
 
 @pytest.mark.asyncio
-async def test_fetch_firms_data_success(tmp_path, monkeypatch):
-    from unittest.mock import AsyncMock, patch
-    from app.services.ingestion.firms_parser import fetch_firms_data
-
+async def test_fetch_firms_data_success(tmp_path):
     mock_resp = AsyncMock()
     mock_resp.status_code = 200
     mock_resp.text = VALID_CSV
@@ -92,14 +89,14 @@ async def test_fetch_firms_data_success(tmp_path, monkeypatch):
             output_dir=str(tmp_path),
         )
         assert os.path.exists(out_path)
-        with open(out_path, "r", encoding="utf-8") as f:
+        with open(out_path, encoding="utf-8") as f:
             content = f.read()
         assert "latitude" in content
 
 
 @pytest.mark.asyncio
 async def test_fetch_firms_data_raises_without_api_key():
-    from app.services.ingestion.firms_parser import fetch_firms_data
     with pytest.raises(IngestionError, match="FIRMS_API_KEY is not set"):
         await fetch_firms_data(api_key="")
+
 
