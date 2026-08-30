@@ -4,14 +4,22 @@ Handles distributed background jobs and scheduled tasks (Celery Beat).
 """
 from __future__ import annotations
 
+import os
 import ssl
 
-from celery import Celery
-from celery.schedules import crontab
+# Clean up malformed CELERY_* env vars (e.g. literal 'REDIS_URL') before Celery parses them
+for env_key in ("CELERY_RESULT_BACKEND", "CELERY_BROKER_URL", "CELERY_BACKEND"):
+    val = os.environ.get(env_key, "").strip().strip("'\"")
+    if val and ("://" not in val or val in {"REDIS_URL", "${REDIS_URL}", "$REDIS_URL", "none", "None"}):
+        os.environ.pop(env_key, None)
 
-from app.core.config import get_settings
+from celery import Celery  # noqa: E402
+from celery.schedules import crontab  # noqa: E402
+
+from app.core.config import get_settings  # noqa: E402
 
 settings = get_settings()
+
 
 
 def _sanitize_url(url: str | None, fallback: str) -> str:
@@ -39,6 +47,8 @@ ssl_options = (
 )
 
 celery_app.conf.update(
+    broker_url=broker_url,
+    result_backend=result_backend,
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
