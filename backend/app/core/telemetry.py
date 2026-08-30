@@ -4,6 +4,8 @@ Observability pillar: metrics (Prometheus) + traces (OTel → Grafana Cloud).
 """
 from __future__ import annotations
 
+import base64
+
 import structlog
 from fastapi import FastAPI
 
@@ -31,8 +33,6 @@ def setup_telemetry(app: FastAPI) -> None:
         provider = TracerProvider(resource=resource)
 
         if settings.GRAFANA_OTLP_ENDPOINT:
-            import base64
-
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
                 OTLPSpanExporter,
             )
@@ -70,7 +70,6 @@ def setup_telemetry(app: FastAPI) -> None:
             )
         else:
             logger.info("otel_tracing_disabled", reason="GRAFANA_OTLP_ENDPOINT not set")
-
 
         trace.set_tracer_provider(provider)
         FastAPIInstrumentor.instrument_app(app)
