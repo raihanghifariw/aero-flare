@@ -32,19 +32,28 @@ GIBS_ZOOM = 8          # ~1.25km tile footprint, more useful for triage
 GIBS_TILE_MATRIX = "250m"
 
 
-def _lat_lon_to_tile(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+def _lat_lon_to_tile(lat: float, lon: float, zoom: int = GIBS_ZOOM) -> tuple[int, int]:
     """
-    Convert WGS84 coordinates to WMTS EPSG:4326 tile row/col indices.
-    EPSG:4326 tiles: col = (lon+180)/360 * 2^zoom, row = (90-lat)/180 * 2^(zoom-1)
+    Convert WGS84 coordinates to NASA GIBS WMTS EPSG:4326 tile row/col indices.
+    For NASA GIBS EPSG:4326 250m resolution:
+      - At zoom 3: MatrixWidth = 10, MatrixHeight = 5
+      - At zoom z (z >= 3): n_col = 10 * 2^(z-3), n_row = 5 * 2^(z-3)
+      - At zoom 8: n_col = 320, n_row = 160
     """
-    n_col = 2 ** zoom
-    n_row = 2 ** (zoom - 1)
+    if zoom >= 3:
+        n_col = 10 * (2 ** (zoom - 3))
+        n_row = 5 * (2 ** (zoom - 3))
+    else:
+        n_col = 2 ** zoom
+        n_row = max(1, 2 ** (zoom - 1))
+
     col = int((lon + 180.0) / 360.0 * n_col)
     row = int((90.0 - lat) / 180.0 * n_row)
     # Clamp to valid range
     col = max(0, min(col, n_col - 1))
     row = max(0, min(row, n_row - 1))
     return col, row
+
 
 
 def _make_r2_client():  # type: ignore[no-untyped-def]

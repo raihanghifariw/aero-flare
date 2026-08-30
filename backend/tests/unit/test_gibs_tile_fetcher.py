@@ -27,31 +27,32 @@ class TestLatLonToTile:
     def test_equator_prime_meridian_is_center_tile(self) -> None:
         """(0, 0) should map to the center column, top-of-bottom-half row."""
         col, row = _lat_lon_to_tile(0.0, 0.0, GIBS_ZOOM)
-        n_col = 2**GIBS_ZOOM
-        n_row = 2 ** (GIBS_ZOOM - 1)
+        n_col = 10 * (2 ** (GIBS_ZOOM - 3))
+        n_row = 5 * (2 ** (GIBS_ZOOM - 3))
         assert col == n_col // 2
         assert row == n_row // 2
 
     def test_extreme_coordinates_are_clamped(self) -> None:
         """North pole / antimeridian must clamp into valid tile range, not overflow."""
         col, row = _lat_lon_to_tile(90.0, 180.0, GIBS_ZOOM)
-        n_col = 2**GIBS_ZOOM
-        n_row = 2 ** (GIBS_ZOOM - 1)
+        n_col = 10 * (2 ** (GIBS_ZOOM - 3))
+        n_row = 5 * (2 ** (GIBS_ZOOM - 3))
         assert 0 <= col < n_col
         assert 0 <= row < n_row
 
     def test_south_pole_west_antimeridian_clamped(self) -> None:
         col, row = _lat_lon_to_tile(-90.0, -180.0, GIBS_ZOOM)
         assert col == 0
-        assert row == (2 ** (GIBS_ZOOM - 1)) - 1
+        assert row == (5 * (2 ** (GIBS_ZOOM - 3))) - 1
 
     def test_indonesia_coordinates_produce_valid_tile(self) -> None:
         """Sanity check for a real Kalimantan hotspot coordinate."""
         col, row = _lat_lon_to_tile(-2.345, 112.456, GIBS_ZOOM)
-        n_col = 2**GIBS_ZOOM
-        n_row = 2 ** (GIBS_ZOOM - 1)
+        n_col = 10 * (2 ** (GIBS_ZOOM - 3))
+        n_row = 5 * (2 ** (GIBS_ZOOM - 3))
         assert 0 <= col < n_col
         assert 0 <= row < n_row
+
 
 
 class TestFetchGibsTile:
