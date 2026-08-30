@@ -73,11 +73,15 @@ class Settings(BaseSettings):
     CACHE_ENABLED: bool = True
     QUEUE_ENABLED: bool = True
 
+    # --- Celery ---
+    CELERY_BROKER_URL: str = ""
+    CELERY_RESULT_BACKEND: str = ""
+    CELERY_TASK_ALWAYS_EAGER: bool = False
 
     # --- Open-Meteo ---
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1/"
 
-    @field_validator("DATABASE_URL", "FIRMS_API_KEY", "OLLAMA_BASE_URL", "API_KEY", "SECRET_KEY", "REDIS_URL", mode="before")
+    @field_validator("DATABASE_URL", "FIRMS_API_KEY", "OLLAMA_BASE_URL", "API_KEY", "SECRET_KEY", "REDIS_URL", "CELERY_BROKER_URL", "CELERY_RESULT_BACKEND", mode="before")
 
     @classmethod
     def strip_whitespace(cls, v: object) -> object:

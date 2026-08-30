@@ -33,4 +33,5 @@ pytest-mock==3.14.0
 mypy==1.10.0
 types-boto3==1.0.2
 redis==5.0.4
+celery==5.4.0
 

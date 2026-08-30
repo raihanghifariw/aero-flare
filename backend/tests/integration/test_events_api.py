@@ -7,7 +7,7 @@ Covers: FR-18 (REST API), FR-19 (Pagination), auth gate (NFR-04).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -254,4 +254,84 @@ async def test_get_events_with_classification_filter(
     data = response.json()
     assert data["total"] >= 1
     assert data["data"][0]["triage"]["classification"] == "FALSE_POSITIVE"
+
+
+@pytest.mark.asyncio
+async def test_get_events_with_danger_level_and_dates(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Filter events by danger_level, date_from, date_to."""
+    from app.models.triage_report import TriageReport
+
+    now = datetime.now(timezone.utc)
+    event = _make_event(detected_at=now)
+    db_session.add(event)
+    await db_session.flush()
+
+    tr = TriageReport(
+        id=uuid.uuid4(),
+        event_id=event.id,
+        classification="CONFIRMED_FIRE",
+        danger_level=4,
+        confidence=0.9,
+        triage_source="VLM",
+        summary="Forest fire",
+        recommended_action="DISPATCH",
+        processed_at=now,
+    )
+    db_session.add(tr)
+    await db_session.flush()
+
+    date_from = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    date_to = (now + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+
+    response = await client.get(f"/api/v1/events?danger_level=4&date_from={date_from}&date_to={date_to}&status=PENDING")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["data"][0]["triage"]["danger_level"] == 4
+
+
+@pytest.mark.asyncio
+async def test_get_events_nationwide_sectors_sampling(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Unfiltered page 1 sampling across Indonesian sectors."""
+    now = datetime.now(timezone.utc)
+    events = [
+        _make_event(lon=105.0, detected_at=now),  # Sumatra
+        _make_event(lon=112.0, detected_at=now),  # Java / Kalimantan
+        _make_event(lon=122.0, detected_at=now),  # Sulawesi
+        _make_event(lon=135.0, detected_at=now),  # Papua
+    ]
+    db_session.add_all(events)
+    await db_session.flush()
+
+    response = await client.get("/api/v1/events?page=1&limit=10")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["data"]) == 4
+
+    # Second call hits cache!
+    cached_response = await client.get("/api/v1/events?page=1&limit=10")
+    assert cached_response.status_code == 200
+    assert cached_response.json()["total"] == data["total"]
+
+
+@pytest.mark.asyncio
+async def test_get_event_detail_cache(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Detail endpoint caching."""
+    event = _make_event()
+    db_session.add(event)
+    await db_session.flush()
+
+    res1 = await client.get(f"/api/v1/events/{event.id}")
+    assert res1.status_code == 200
+
+    res2 = await client.get(f"/api/v1/events/{event.id}")
+    assert res2.status_code == 200
+    assert res1.json() == res2.json()
+
 
