@@ -82,12 +82,22 @@ class Settings(BaseSettings):
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1/"
 
     @field_validator("DATABASE_URL", "FIRMS_API_KEY", "OLLAMA_BASE_URL", "API_KEY", "SECRET_KEY", "REDIS_URL", "CELERY_BROKER_URL", "CELERY_RESULT_BACKEND", mode="before")
-
     @classmethod
     def strip_whitespace(cls, v: object) -> object:
         if isinstance(v, str):
             return v.strip().strip("'\"")
         return v
+
+    @field_validator("CELERY_BROKER_URL", "CELERY_RESULT_BACKEND", mode="before")
+    @classmethod
+    def sanitize_celery_urls(cls, v: object) -> object:
+        if isinstance(v, str):
+            cleaned = v.strip().strip("'\"")
+            if cleaned in {"REDIS_URL", "${REDIS_URL}", "$REDIS_URL"}:
+                return ""
+            return cleaned
+        return v
+
 
     @field_validator("ENVIRONMENT")
     @classmethod
