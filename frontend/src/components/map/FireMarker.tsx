@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { CircleMarker, Popup } from 'react-leaflet';
 import { DANGER_COLORS } from '@/lib/constants';
 import { ClassificationTag } from '@/components/ui/ClassificationTag';
@@ -8,7 +9,9 @@ import { TriageSourceBadge } from '@/components/ui/TriageSourceBadge';
 import { formatDate, formatCoords, formatFRP } from '@/lib/formatters';
 import type { FireEvent } from '@/types/fire-event';
 import type { TriageReport } from '@/types/triage-report';
-import { Satellite, Zap, Compass, ChevronRight } from 'lucide-react';
+import { Satellite, Zap, Compass, ExternalLink } from 'lucide-react';
+
+
 
 export interface FireMarkerProps {
   event: FireEvent;
@@ -126,17 +129,18 @@ export function FireMarker({ event, triage, isSelected = false, onSelect }: Fire
               </div>
             </div>
 
-            <button
+            <Link
+              href={`/events/${event.id}`}
               className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-brand-dark"
-              onClick={() => onSelect(event.id)}
             >
-              <span>Inspect Triage Report</span>
-              <ChevronRight size={13} aria-hidden="true" />
-            </button>
+              <span>Inspect Full Incident Dossier</span>
+              <ExternalLink size={12} aria-hidden="true" />
+            </Link>
           </div>
         </Popup>
       </CircleMarker>
     </>
   );
 }
+
 

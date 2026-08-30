@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import clsx from 'clsx';
 import {
@@ -11,7 +12,9 @@ import {
   Wind,
   Droplets,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
+
 import { DangerBadge } from '@/components/ui/DangerBadge';
 import { ClassificationTag } from '@/components/ui/ClassificationTag';
 import { TriageSourceBadge } from '@/components/ui/TriageSourceBadge';
@@ -264,9 +267,21 @@ export function TriageModal({ event, onClose }: TriageModalProps) {
               )}
             </div>
           )}
+
+          {/* Full Page Dossier Action */}
+          <div className="pt-2 border-t border-edge">
+            <Link
+              href={`/events/${event.id}`}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-brand/20 bg-brand/5 px-4 py-2.5 text-xs font-bold text-brand shadow-sm transition-all hover:bg-brand hover:text-white"
+            >
+              <span>Open Dedicated Incident Page</span>
+              <ExternalLink size={13} aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
     </>
   );
 }
+
 
