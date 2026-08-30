@@ -272,17 +272,17 @@ export function TriageModal({ event, onClose }: TriageModalProps) {
           <div className="pt-2 border-t border-edge">
             <Link
               href={`/events/${event.id}`}
-              className="flex w-full items-center justify-center gap-2 rounded bg-orange-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-orange-600"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-brand-dark"
             >
-              <span>Open Full Incident Telemetry Page</span>
-              <ExternalLink size={13} aria-hidden="true" />
+              <span>Open Dedicated Incident Page</span>
+              <ExternalLink size={13} className="text-white" aria-hidden="true" />
             </Link>
           </div>
         </div>
       </div>
-
     </>
   );
 }
+
 
 

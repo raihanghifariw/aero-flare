@@ -67,11 +67,12 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
         <ErrorAlert message={`Incident record "${id}" not found in telemetry registry.`} />
         <Link
           href="/events"
-          className="mt-6 inline-flex items-center gap-2 rounded-full border border-edge bg-white px-5 py-2.5 text-xs font-bold text-brand shadow-sm hover:bg-slate-50"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-brand-dark transition-colors"
         >
-          <ArrowLeft size={14} aria-hidden="true" />
+          <ArrowLeft size={14} className="text-white" aria-hidden="true" />
           Return to Incidents Explorer
         </Link>
+
       </div>
     );
   }
