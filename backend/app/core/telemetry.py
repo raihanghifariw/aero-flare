@@ -25,21 +25,35 @@ def setup_telemetry(app: FastAPI) -> None:
         provider = TracerProvider()
 
         if settings.GRAFANA_OTLP_ENDPOINT:
+            import base64
+
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
                 OTLPSpanExporter,
             )
+
+            endpoint = settings.GRAFANA_OTLP_ENDPOINT.strip().rstrip("/")
+            if not endpoint.endswith("/v1/traces"):
+                endpoint = f"{endpoint}/v1/traces"
+
+            auth_header = ""
+            if settings.GRAFANA_INSTANCE_ID and settings.GRAFANA_API_TOKEN:
+                creds = f"{settings.GRAFANA_INSTANCE_ID}:{settings.GRAFANA_API_TOKEN}"
+                b64_creds = base64.b64encode(creds.encode("utf-8")).decode("utf-8")
+                auth_header = f"Basic {b64_creds}"
+            elif settings.GRAFANA_API_TOKEN:
+                auth_header = f"Bearer {settings.GRAFANA_API_TOKEN}"
+
+            headers = {"Authorization": auth_header} if auth_header else {}
+
             exporter = OTLPSpanExporter(
-                endpoint=f"{settings.GRAFANA_OTLP_ENDPOINT}/v1/traces",
-                headers={
-                    "Authorization": (
-                        f"Bearer {settings.GRAFANA_INSTANCE_ID}:{settings.GRAFANA_API_TOKEN}"
-                    )
-                },
+                endpoint=endpoint,
+                headers=headers,
             )
             provider.add_span_processor(BatchSpanProcessor(exporter))
-            logger.info("otel_tracing_enabled", endpoint=settings.GRAFANA_OTLP_ENDPOINT)
+            logger.info("otel_tracing_enabled", endpoint=endpoint)
         else:
             logger.info("otel_tracing_disabled", reason="GRAFANA_OTLP_ENDPOINT not set")
+
 
         trace.set_tracer_provider(provider)
         FastAPIInstrumentor.instrument_app(app)
