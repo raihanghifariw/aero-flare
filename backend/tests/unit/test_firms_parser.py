@@ -1,9 +1,11 @@
 """Unit tests for FIRMS CSV parser."""
 from __future__ import annotations
 
+import os
 import textwrap
 
 import pytest
+
 
 from app.core.exceptions import IngestionError
 from app.services.ingestion.firms_parser import parse_firms_csv
@@ -72,3 +74,32 @@ def test_parse_firms_csv_missing_column_raises_ingestion_error(missing_col_csv_f
 def test_parse_firms_csv_missing_file_raises_ingestion_error():
     with pytest.raises(IngestionError, match="Failed to read FIRMS CSV"):
         parse_firms_csv("/nonexistent/path/firms.csv")
+
+
+@pytest.mark.asyncio
+async def test_fetch_firms_data_success(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock, patch
+    from app.services.ingestion.firms_parser import fetch_firms_data
+
+    mock_resp = AsyncMock()
+    mock_resp.status_code = 200
+    mock_resp.text = VALID_CSV
+    mock_resp.content = VALID_CSV.encode("utf-8")
+
+    with patch("httpx.AsyncClient.get", return_value=mock_resp):
+        out_path = await fetch_firms_data(
+            api_key="test_key",
+            output_dir=str(tmp_path),
+        )
+        assert os.path.exists(out_path)
+        with open(out_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert "latitude" in content
+
+
+@pytest.mark.asyncio
+async def test_fetch_firms_data_raises_without_api_key():
+    from app.services.ingestion.firms_parser import fetch_firms_data
+    with pytest.raises(IngestionError, match="FIRMS_API_KEY is not set"):
+        await fetch_firms_data(api_key="")
+
