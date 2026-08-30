@@ -31,9 +31,15 @@ class TaskQueue:
         self._redis: aioredis.Redis | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._in_memory_jobs: dict[str, dict[str, Any]] = {}
-        self._in_memory_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self._in_memory_queue: asyncio.Queue[dict[str, Any]] | None = None
+
+    def _get_in_memory_queue(self) -> asyncio.Queue[dict[str, Any]]:
+        if self._in_memory_queue is None:
+            self._in_memory_queue = asyncio.Queue()
+        return self._in_memory_queue
 
     async def _get_client(self) -> aioredis.Redis | None:
+
         settings = get_settings()
         if not settings.QUEUE_ENABLED or not settings.REDIS_URL:
             return None
@@ -91,7 +97,7 @@ class TaskQueue:
 
         # In-memory queue fallback
         self._in_memory_jobs[job_id] = job_record
-        await self._in_memory_queue.put(job_record)
+        await self._get_in_memory_queue().put(job_record)
         logger.info("job_enqueued_in_memory", job_id=job_id, task=task_name)
         return job_id
 
@@ -147,9 +153,10 @@ class TaskQueue:
                 logger.warning("redis_pop_job_failed", error=str(e))
 
         try:
-            return await asyncio.wait_for(self._in_memory_queue.get(), timeout=float(timeout))
+            return await asyncio.wait_for(self._get_in_memory_queue().get(), timeout=float(timeout))
         except (asyncio.TimeoutError, TimeoutError):
             return None
+
 
     async def close(self) -> None:
         """Close connection pool cleanly."""

@@ -5,6 +5,7 @@ aggregated stats, and external API responses (Open-Meteo weather).
 """
 from __future__ import annotations
 
+import asyncio
 import functools
 import json
 import time
@@ -32,11 +33,10 @@ class CacheService:
         self._redis_available: bool | None = None
 
     async def _get_client(self) -> aioredis.Redis | None:
-        import asyncio
-
         settings = get_settings()
         if not settings.CACHE_ENABLED or not settings.REDIS_URL:
             return None
+
 
         current_loop = asyncio.get_running_loop()
         if self._redis is not None and self._loop != current_loop:
