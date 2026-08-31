@@ -21,6 +21,12 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
+    ignore:
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+
 
   # GitHub Actions versions
   - package-ecosystem: "github-actions"
